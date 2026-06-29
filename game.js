@@ -73,8 +73,8 @@ let previousMouseX = 0;
 // Local Player Metadata
 let localPlayerName = "Player";
 let localPlayerBrand = "BMW";
-let localPlayerTeam = "blue"; // 'blue' or 'red' — only used in team battle mode
-let currentGameMode = "ffa"; // 'ffa' (Free For All) or 'team' (Team Battle)
+var localPlayerTeam = "blue"; // 'blue' or 'red' — only used in team battle mode
+var currentGameMode = "ffa"; // 'ffa' (Free For All) or 'team' (Team Battle)
 
 // Brand definitions: styling colors and visual configurations
 const CAR_BRANDS = {
@@ -1901,7 +1901,7 @@ document.getElementById('btn-waiting-team-red').addEventListener('click', () => 
     localPlayerTeam = 'red';
     // Notify host about team change
     if (typeof sendRoomMessage === 'function') {
-        sendRoomMessage('TEAM_CHANGE', { team: localPlayerTeam });
+        sendRoomMessage('TEAM_CHANGE', { playerId: clientId, team: localPlayerTeam });
     }
 });
 
@@ -1910,7 +1910,7 @@ document.getElementById('btn-waiting-team-blue').addEventListener('click', () =>
     document.getElementById('btn-waiting-team-red').classList.remove('active');
     localPlayerTeam = 'blue';
     if (typeof sendRoomMessage === 'function') {
-        sendRoomMessage('TEAM_CHANGE', { team: localPlayerTeam });
+        sendRoomMessage('TEAM_CHANGE', { playerId: clientId, team: localPlayerTeam });
     }
 });
 

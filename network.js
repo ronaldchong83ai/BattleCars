@@ -9,6 +9,8 @@ let currentHostId = null;
 let currentRoomName = null;   // stored for reconnection
 let currentIsPrivate = false; // stored for reconnection
 window.isHost = false;
+window.currentGameMode = 'ffa';
+window.localPlayerTeam = 'blue';
 
 // Low-latency multiplayer prediction variables
 window.clientInputSeq = 0;
