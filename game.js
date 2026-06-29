@@ -1360,7 +1360,16 @@ class GameManager {
         );
         camera.lookAt(lookTarget);
 
-        // Update Spectating HUD Status
+        // Update Spectating HUD Status and Spectator Exit Button
+        const exitBtn = document.getElementById('btn-spectator-exit');
+        if (exitBtn) {
+            if (isSpectating && this.isMultiplayer && !this.isMatchOver) {
+                exitBtn.classList.remove('hidden');
+            } else {
+                exitBtn.classList.add('hidden');
+            }
+        }
+
         const controlsHelper = document.querySelector('.controls-helper');
         if (controlsHelper) {
             if (isSpectating) {
@@ -2053,6 +2062,11 @@ document.getElementById('btn-restart').addEventListener('click', () => {
 document.getElementById('btn-exit-lobby').addEventListener('click', () => {
     leaveRoom();
     showScreen('mainMenu');
+});
+
+document.getElementById('btn-spectator-exit').addEventListener('click', () => {
+    leaveRoom();
+    window.location.reload();
 });
 
 /**

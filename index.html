@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=2.1.0">
+    <link rel="stylesheet" href="style.css?v=2.1.1">
     <link rel="icon" href="data:,">
 </head>
 <body>
@@ -270,6 +270,9 @@
                 </div>
             </div>
             
+            <!-- Top Right: Exit Room Button during Spectating -->
+            <button id="btn-spectator-exit" class="btn btn-back hidden" style="position: absolute; top: 80px; right: 20px; z-index: 100; font-size: 14px; font-weight: bold; border-color: var(--neon-red); color: var(--neon-red); text-shadow: 0 0 5px var(--neon-red);">Exit Room</button>
+            
             <!-- Left Panel: Stats List -->
             <div class="hud-panel stats-panel">
                 <h3 class="panel-header">CAR STATUS</h3>
@@ -333,9 +336,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
     <!-- Game Source Scripts -->
-    <script src="physics.js?v=2.1.0"></script>
-    <script src="network.js?v=2.1.0"></script>
-    <script src="ai.js?v=2.1.0"></script>
-    <script src="game.js?v=2.1.0"></script>
+    <script src="physics.js?v=2.1.1"></script>
+    <script src="network.js?v=2.1.1"></script>
+    <script src="ai.js?v=2.1.1"></script>
+    <script src="game.js?v=2.1.1"></script>
 </body>
 </html>
