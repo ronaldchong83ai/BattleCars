@@ -303,7 +303,8 @@ function broadcastLobbyState() {
     if (!isHost) return;
     sendRoomMessage('LOBBY_UPDATE', { 
         players: window.lobbyPlayers,
-        gameMode: window.currentGameMode || 'ffa'
+        gameMode: window.currentGameMode || 'ffa',
+        hostTeam: window.localPlayerTeam || 'blue'
     });
 }
 
@@ -423,10 +424,10 @@ function handleClientMessage(event) {
     }
     
     else if (type === 'LOBBY_UPDATE') {
-        const { players } = data;
+        const { players, gameMode, hostTeam } = data;
         window.lobbyPlayers = players;
         if (networkCallbacks.onLobbyUpdate) {
-            networkCallbacks.onLobbyUpdate(players);
+            networkCallbacks.onLobbyUpdate(players, { gameMode, hostTeam });
         }
     }
     

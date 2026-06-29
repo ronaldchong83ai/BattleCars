@@ -689,8 +689,12 @@ function create3DCarMesh(brand, name, team) {
 function createBulletMesh() {
     const geo = new THREE.CylinderGeometry(BULLET_RADIUS, BULLET_RADIUS, 1.6, 8);
     geo.rotateX(Math.PI / 2); // face forward
-    const mat = new THREE.MeshBasicMaterial({
-        color: 0x00f2fe
+    const mat = new THREE.MeshStandardMaterial({
+        color: 0xdddddd,        // Light silver base
+        metalness: 0.95,        // Highly reflective metal
+        roughness: 0.05,        // Very glossy
+        emissive: 0xffffff,     // Silver/white emissive glow
+        emissiveIntensity: 0.6
     });
     const mesh = new THREE.Mesh(geo, mat);
     scene.add(mesh);
@@ -2207,10 +2211,14 @@ networkCallbacks.onLobbyUpdate = (players, meta) => {
         const guestList = document.getElementById('waiting-lobby-players');
         guestList.innerHTML = '';
         
-        // Show host first
+        // Show host first (with team badge if meta contains hostTeam)
+        const hostTeam = (meta && meta.hostTeam) || 'blue';
+        const hostTeamBadge = currentGameMode === 'team'
+            ? `<span style="color: ${hostTeam === 'red' ? 'var(--neon-red)' : 'var(--neon-cyan)'}; margin-left: 6px;">${hostTeam === 'red' ? '🔴' : '🔵'}</span>`
+            : '';
         guestList.innerHTML += `
             <li class="host-player">
-                <span>Host Player</span>
+                <span>Host Player${hostTeamBadge}</span>
                 <span class="player-role">Host</span>
             </li>
         `;
@@ -2218,7 +2226,7 @@ networkCallbacks.onLobbyUpdate = (players, meta) => {
         for (let player of players) {
             const isMe = (player.id === clientId);
             const teamBadge = currentGameMode === 'team' && player.team
-                ? `<span style="color: ${player.team === 'red' ? 'var(--neon-red)' : 'var(--neon-cyan)'}; margin-left: 6px;">${player.team === 'red' ? '\ud83d\udd34' : '\ud83d\udd35'}</span>`
+                ? `<span style="color: ${player.team === 'red' ? 'var(--neon-red)' : 'var(--neon-cyan)'}; margin-left: 6px;">${player.team === 'red' ? '🔴' : '🔵'}</span>`
                 : '';
             guestList.innerHTML += `
                 <li>
