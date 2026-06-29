@@ -235,7 +235,7 @@ function searchPublicRooms() {
     return publicRooms;
 }
 
-function joinRoomByHostId(hostId, playerName, carBrand) {
+function joinRoomByHostId(hostId, playerName, carBrand, team) {
     isHost = false;
     currentHostId = hostId;
     window.lobbyPlayers = [];
@@ -253,13 +253,14 @@ function joinRoomByHostId(hostId, playerName, carBrand) {
             sendRoomMessage('JOIN_REQUEST', {
                 playerId: clientId,
                 name: playerName,
-                brand: carBrand
+                brand: carBrand,
+                team: team
             });
         }, 100);
     }
 }
 
-function joinPrivateRoom(code, playerName, carBrand) {
+function joinPrivateRoom(code, playerName, carBrand, team) {
     isHost = false;
     currentHostId = code;
     window.lobbyPlayers = [];
@@ -277,7 +278,8 @@ function joinPrivateRoom(code, playerName, carBrand) {
             sendRoomMessage('JOIN_REQUEST', {
                 playerId: clientId,
                 name: playerName,
-                brand: carBrand
+                brand: carBrand,
+                team: team
             });
         }, 100);
         return { success: true };
@@ -297,7 +299,10 @@ function sendRoomMessage(type, data) {
 
 function broadcastLobbyState() {
     if (!isHost) return;
-    sendRoomMessage('LOBBY_UPDATE', { players: window.lobbyPlayers });
+    sendRoomMessage('LOBBY_UPDATE', { 
+        players: window.lobbyPlayers,
+        gameMode: window.currentGameMode || 'ffa'
+    });
 }
 
 function hostStartGame(playersArray, skyboxName) {
@@ -339,14 +344,6 @@ function updateRoomMetadata(players) {
     // Left for backward compatibility
 }
 
-function broadcastRoomHeartbeat() {
-    // Left for backward compatibility
-}
-
-function cleanStaleRooms() {
-    // Left for backward compatibility
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // handleHostMessage — LOBBY management only (runs on the host client)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -354,7 +351,7 @@ function handleHostMessage(event) {
     const { type, data } = event.data;
     
     if (type === 'JOIN_REQUEST') {
-        const { playerId, name, brand } = data;
+        const { playerId, name, brand, team } = data;
         
         if (window.lobbyPlayers.length >= 7) {
             sendRoomMessage('JOIN_RESPONSE', { success: false, playerId, error: 'Room is full! (Max 8 players)' });
@@ -366,7 +363,7 @@ function handleHostMessage(event) {
             return;
         }
 
-        const newPlayer = { id: playerId, name: name, brand: brand };
+        const newPlayer = { id: playerId, name: name, brand: brand, team: team || 'blue' };
         window.lobbyPlayers.push(newPlayer);
         
         sendRoomMessage('JOIN_RESPONSE', { success: true, playerId });
@@ -376,6 +373,18 @@ function handleHostMessage(event) {
         }
         
         broadcastLobbyState();
+    }
+    
+    else if (type === 'TEAM_CHANGE') {
+        const { playerId, team } = data;
+        const player = window.lobbyPlayers.find(p => p.id === playerId);
+        if (player) {
+            player.team = team;
+            if (networkCallbacks.onLobbyUpdate) {
+                networkCallbacks.onLobbyUpdate(window.lobbyPlayers);
+            }
+            broadcastLobbyState();
+        }
     }
     
     else if (type === 'LEAVE_REQUEST') {

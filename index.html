@@ -86,6 +86,12 @@
                     <button id="btn-type-public" class="btn-toggle active">Public</button>
                     <button id="btn-type-private" class="btn-toggle">Private</button>
                 </div>
+
+                <label class="panel-label" style="margin-top: 10px;">Game Mode</label>
+                <div class="room-type-toggle">
+                    <button id="btn-mode-ffa" class="btn-toggle active">Free For All</button>
+                    <button id="btn-mode-team" class="btn-toggle">Team Battle</button>
+                </div>
             </div>
             <div class="button-group">
                 <button id="btn-start-host-game" class="btn btn-primary">Host Game</button>
@@ -127,6 +133,14 @@
                 <div class="lobby-ai-fill-container" style="margin-top: 20px; display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
                     <input type="checkbox" id="host-lobby-fill-ai" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--neon-cyan);">
                     <label for="host-lobby-fill-ai" class="panel-label" style="margin-bottom: 0; cursor: pointer; color: var(--text-color); font-size: 0.9rem; text-transform: none; font-family: var(--font-body);">Fill remaining slots with AI bots</label>
+                </div>
+                <!-- Team Selection UI (only visible when Team Battle mode is selected) -->
+                <div id="host-lobby-team-picker" class="hidden" style="margin-top: 15px;">
+                    <label class="panel-label">Choose Your Team</label>
+                    <div class="room-type-toggle">
+                        <button id="btn-team-red" class="btn-toggle team-toggle" data-team="red" style="border-color: var(--neon-red); color: var(--neon-red);">🔴 Red Team</button>
+                        <button id="btn-team-blue" class="btn-toggle team-toggle active" data-team="blue" style="border-color: var(--neon-cyan); color: var(--neon-cyan);">🔵 Blue Team</button>
+                    </div>
                 </div>
             </div>
             <div class="button-group">
@@ -196,6 +210,18 @@
                     <span class="info-label">Room:</span>
                     <span id="waiting-room-name" class="info-value">...</span>
                 </div>
+                <div id="waiting-mode-info" class="lobby-info hidden" style="margin-top: 5px;">
+                    <span class="info-label">Mode:</span>
+                    <span id="waiting-game-mode" class="info-value">Free For All</span>
+                </div>
+                <!-- Team Selection for joining clients -->
+                <div id="waiting-team-picker" class="hidden" style="margin-top: 15px;">
+                    <label class="panel-label">Choose Your Team</label>
+                    <div class="room-type-toggle">
+                        <button id="btn-waiting-team-red" class="btn-toggle team-toggle" data-team="red" style="border-color: var(--neon-red); color: var(--neon-red);">🔴 Red Team</button>
+                        <button id="btn-waiting-team-blue" class="btn-toggle team-toggle active" data-team="blue" style="border-color: var(--neon-cyan); color: var(--neon-cyan);">🔵 Blue Team</button>
+                    </div>
+                </div>
                 <div class="lobby-players-container">
                     <h3>Players in Lobby</h3>
                     <ul id="waiting-lobby-players" class="player-list">
@@ -225,7 +251,7 @@
                 <ul>
                     <li>Shoot opponents to push them out of the circular arena suspended in the sky.</li>
                     <li>Bullets deliver knockback force. Collect glowing <strong>Powerups</strong> to increase your bullet impact force.</li>
-                    <li>Each player is assigned a random car (BMW, Mercedes, Audi, etc.) with unique decals and styling.</li>
+                    <li>Each player is assigned a random car with unique decals and styling.</li>
                     <li>The last car remaining on the platform wins!</li>
                 </ul>
             </div>
@@ -257,15 +283,11 @@
                 <span>[W][A][S][D] Drive</span> | <span>[Left Click] Shoot</span>
             </div>
 
-            <!-- Bottom Right: Speed / Force Panel -->
+            <!-- Bottom Right: Impact Force Panel -->
             <div class="hud-panel player-status-panel">
                 <div class="stat-box">
                     <span class="stat-label">IMPACT FORCE</span>
                     <span id="hud-player-force" class="stat-value text-glow">100%</span>
-                </div>
-                <div class="stat-box">
-                    <span class="stat-label">CAR BRAND</span>
-                    <span id="hud-player-brand" class="stat-value brand-value">BMW</span>
                 </div>
             </div>
 

@@ -73,6 +73,8 @@ let previousMouseX = 0;
 // Local Player Metadata
 let localPlayerName = "Player";
 let localPlayerBrand = "BMW";
+let localPlayerTeam = "blue"; // 'blue' or 'red' — only used in team battle mode
+let currentGameMode = "ffa"; // 'ffa' (Free For All) or 'team' (Team Battle)
 
 // Brand definitions: styling colors and visual configurations
 const CAR_BRANDS = {
@@ -481,9 +483,22 @@ function createBrandLogoTexture(brand) {
  * Generates a stylized 3D procedural vehicle model.
  * Each brand has unique features (grilles, emblems, wheel sizes, colors).
  */
-function create3DCarMesh(brand, name) {
+function create3DCarMesh(brand, name, team) {
     const carGroup = new THREE.Group();
     const info = CAR_BRANDS[brand] || CAR_BRANDS.BMW;
+
+    // Override colors for Team Battle mode
+    let bodyColor = info.color;
+    let bodyEmissive = info.emissive;
+    if (currentGameMode === 'team' && team) {
+        if (team === 'red') {
+            bodyColor = 0xff2222;       // Bright Red
+            bodyEmissive = 0x550000;    // Dark Red
+        } else {
+            bodyColor = 0x00f2fe;       // Bright Cyan/Blue
+            bodyEmissive = 0x003344;    // Dark Cyan/Blue
+        }
+    }
 
     // 1. Car Body Chassis (Sexy aerodynamic shape)
     const bodyShape = new THREE.Shape();
@@ -510,10 +525,10 @@ function create3DCarMesh(brand, name) {
     bodyGeo.center();
     
     const bodyMat = new THREE.MeshStandardMaterial({
-        color: info.color,
+        color: bodyColor,
         roughness: 0.15,
         metalness: 0.85,
-        emissive: info.emissive,
+        emissive: bodyEmissive,
         emissiveIntensity: 0.3
     });
     
@@ -605,9 +620,13 @@ function create3DCarMesh(brand, name) {
         // Add a glowing rim caps for futuristic look
         const rimGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.48, 8);
         rimGeo.rotateZ(Math.PI / 2);
+        let rimColor = info.badgeColor;
+        if (currentGameMode === 'team' && team) {
+            rimColor = team === 'red' ? 0xff2222 : 0x00f2fe;
+        }
         const rimMat = new THREE.MeshStandardMaterial({
-            color: info.badgeColor,
-            emissive: info.badgeColor,
+            color: rimColor,
+            emissive: rimColor,
             emissiveIntensity: 0.6
         });
         const rimMesh = new THREE.Mesh(rimGeo, rimMat);
@@ -618,91 +637,22 @@ function create3DCarMesh(brand, name) {
     }
     carGroup.userData.wheels = wheels;
 
-    // 5. Brand Accent Decals & Plates
-    if (brand === 'BMW') {
-        const grilleGeo = new THREE.BoxGeometry(0.7, 0.24, 0.05);
-        const grilleMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.9 });
-        const grille = new THREE.Mesh(grilleGeo, grilleMat);
-        grille.position.set(0, 0.52, -2.01);
-        grille.rotation.y = Math.PI;
-        carGroup.add(grille);
-    } 
-    else if (brand === 'Mercedes') {
-        const badgeGeo = new THREE.RingGeometry(0.18, 0.22, 16);
-        const badgeMat = new THREE.MeshBasicMaterial({ color: info.badgeColor, side: THREE.DoubleSide });
-        const badge = new THREE.Mesh(badgeGeo, badgeMat);
-        badge.position.set(0, 0.82, -1.8);
-        badge.rotation.x = Math.PI / 3;
-        carGroup.add(badge);
-    } 
-    else if (brand === 'Audi') {
-        const ringG = new THREE.RingGeometry(0.08, 0.11, 12);
-        const ringM = new THREE.MeshBasicMaterial({ color: 0xdddddd, side: THREE.DoubleSide });
-        const ringsGroup = new THREE.Group();
-        
-        for (let r = 0; r < 4; r++) {
-            const ring = new THREE.Mesh(ringG, ringM);
-            ring.position.x = (r - 1.5) * 0.14;
-            ringsGroup.add(ring);
-        }
-        ringsGroup.position.set(0, 0.52, -2.01);
-        ringsGroup.rotation.y = Math.PI;
-        carGroup.add(ringsGroup);
-    }
-    else {
-        const spoilerGeo = new THREE.BoxGeometry(2.0, 0.1, 0.6);
-        const spoilerSupportGeo = new THREE.BoxGeometry(0.15, 0.4, 0.15);
-        const spoilerMat = new THREE.MeshStandardMaterial({ color: info.color });
-        
-        const spoiler = new THREE.Mesh(spoilerGeo, spoilerMat);
-        spoiler.position.set(0, 1.25, 1.7);
-        spoiler.castShadow = true;
-        carGroup.add(spoiler);
+    // 5. Stylized Spoiler (Added standard spoiler to all cars, no brand-specific decor)
+    const spoilerGeo = new THREE.BoxGeometry(2.0, 0.1, 0.6);
+    const spoilerSupportGeo = new THREE.BoxGeometry(0.15, 0.4, 0.15);
+    const spoilerMat = new THREE.MeshStandardMaterial({ color: bodyColor });
+    
+    const spoiler = new THREE.Mesh(spoilerGeo, spoilerMat);
+    spoiler.position.set(0, 1.25, 1.7);
+    spoiler.castShadow = true;
+    carGroup.add(spoiler);
 
-        const supportL = new THREE.Mesh(spoilerSupportGeo, spoilerMat);
-        supportL.position.set(-0.7, 0.95, 1.7);
-        const supportR = new THREE.Mesh(spoilerSupportGeo, spoilerMat);
-        supportR.position.set(0.7, 0.95, 1.7);
-        carGroup.add(supportL);
-        carGroup.add(supportR);
-    }
-
-    // 6. Front and Back Logo Plates with Backing Plates to Prevent Clipping
-    const logoTexture = createBrandLogoTexture(brand);
-    logoTexture.needsUpdate = true;
-    
-    // Using MeshBasicMaterial so logos are unaffected by lights and perfectly visible/clear
-    const logoMat = new THREE.MeshBasicMaterial({
-        map: logoTexture,
-        transparent: true,
-        side: THREE.DoubleSide
-    });
-    const logoGeo = new THREE.PlaneGeometry(0.55, 0.55); // larger size for clear visibility
-    
-    const plateGeo = new THREE.BoxGeometry(0.59, 0.59, 0.03);
-    const plateMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.3, metalness: 0.8 });
-    
-    // Front backing plate and logo
-    const frontPlate = new THREE.Mesh(plateGeo, plateMat);
-    frontPlate.position.set(0, 0.48, -2.21);
-    frontPlate.rotation.y = Math.PI;
-    carGroup.add(frontPlate);
-    
-    const frontLogo = new THREE.Mesh(logoGeo, logoMat);
-    frontLogo.position.set(0, 0.48, -2.23);
-    frontLogo.rotation.y = Math.PI;
-    carGroup.add(frontLogo);
-    
-    // Back backing plate and logo
-    const backPlate = new THREE.Mesh(plateGeo, plateMat);
-    backPlate.position.set(0, 0.52, 2.21);
-    backPlate.rotation.y = 0;
-    carGroup.add(backPlate);
-    
-    const backLogo = new THREE.Mesh(logoGeo, logoMat);
-    backLogo.position.set(0, 0.52, 2.23);
-    backLogo.rotation.y = 0;
-    carGroup.add(backLogo);
+    const supportL = new THREE.Mesh(spoilerSupportGeo, spoilerMat);
+    supportL.position.set(-0.7, 0.95, 1.7);
+    const supportR = new THREE.Mesh(spoilerSupportGeo, spoilerMat);
+    supportR.position.set(0.7, 0.95, 1.7);
+    carGroup.add(supportL);
+    carGroup.add(supportR);
 
     // Name tag overlay (flat canvas billboard above car)
     const canvas = document.createElement('canvas');
@@ -712,7 +662,13 @@ function create3DCarMesh(brand, name) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
     ctx.fillRect(0, 0, 256, 64);
     ctx.font = 'bold 28px Orbitron';
-    ctx.fillStyle = '#ffffff';
+    
+    // Choose team name color
+    let nameColor = '#ffffff';
+    if (currentGameMode === 'team' && team) {
+        nameColor = team === 'red' ? '#ff3333' : '#00f2fe';
+    }
+    ctx.fillStyle = nameColor;
     ctx.textAlign = 'center';
     ctx.fillText(name, 128, 42);
 
@@ -896,16 +852,18 @@ class GameManager {
 
                     const pState = createCarPhysicsState(player.id, player.name, player.brand, spawnX, spawnZ);
                     pState.yaw = angle + Math.PI;
+                    pState.team = player.team;
                     this.cars.push(pState);
-                    activeCarMeshes[pState.id] = create3DCarMesh(pState.brand, pState.name);
+                    activeCarMeshes[pState.id] = create3DCarMesh(pState.brand, pState.name, pState.team);
                 }
             } else {
                 if (isHost) {
                     // Fallback to old behavior
                     // Host player
                     const pState = createCarPhysicsState(clientId, localPlayerName, localPlayerBrand, 0, 25);
+                    pState.team = localPlayerTeam;
                     this.cars.push(pState);
-                    activeCarMeshes[pState.id] = create3DCarMesh(pState.brand, pState.name);
+                    activeCarMeshes[pState.id] = create3DCarMesh(pState.brand, pState.name, pState.team);
 
                     // Add connected guests
                     for (let i = 0; i < lobbyPlayers.length; i++) {
@@ -917,8 +875,9 @@ class GameManager {
 
                         const guestState = createCarPhysicsState(guest.id, guest.name, guest.brand, spawnX, spawnZ);
                         guestState.yaw = angle + Math.PI;
+                        guestState.team = guest.team;
                         this.cars.push(guestState);
-                        activeCarMeshes[guestState.id] = create3DCarMesh(guestState.brand, guestState.name);
+                        activeCarMeshes[guestState.id] = create3DCarMesh(guestState.brand, guestState.name, guestState.team);
                     }
                 } else {
                     // Clients receive layout initialization in client state updates, so we do lazy creation
@@ -1076,22 +1035,48 @@ class GameManager {
 
             // Match Win Condition Evaluation
             const survivors = this.cars.filter(c => c.alive);
-            if (survivors.length <= 1 && this.gameTime > 2.0) {
-                this.isMatchOver = true;
-                const winnerName = survivors.length === 1 ? survivors[0].name : "No one";
-                
-                // Sort final ranking
-                const ranking = [...this.cars].sort((a, b) => {
-                    if (a.alive && !b.alive) return -1;
-                    if (!a.alive && b.alive) return 1;
-                    return b.y - a.y; // lower fell first
-                });
+            
+            if (currentGameMode === 'team') {
+                // Team Battle: check if all alive players are on the same team
+                if (survivors.length >= 1 && this.gameTime > 2.0) {
+                    const aliveTeams = new Set(survivors.map(c => c.team || 'blue'));
+                    if (aliveTeams.size <= 1) {
+                        this.isMatchOver = true;
+                        const winningTeam = survivors[0] ? (survivors[0].team || 'blue') : 'none';
+                        const winnerName = winningTeam === 'red' ? '🔴 Red Team' : '🔵 Blue Team';
+                        
+                        const ranking = [...this.cars].sort((a, b) => {
+                            if (a.alive && !b.alive) return -1;
+                            if (!a.alive && b.alive) return 1;
+                            return b.y - a.y;
+                        });
 
-                if (this.isMultiplayer) {
-                    hostSendGameOver(winnerName, ranking.map(r => ({ name: r.name, force: r.impactForce, alive: r.alive })));
-                    displayGameOver(winnerName, ranking);
-                } else {
-                    displayGameOver(winnerName, ranking);
+                        if (this.isMultiplayer) {
+                            hostSendGameOver(winnerName, ranking.map(r => ({ name: r.name, force: r.impactForce, alive: r.alive, team: r.team })));
+                            displayGameOver(winnerName, ranking);
+                        } else {
+                            displayGameOver(winnerName, ranking);
+                        }
+                    }
+                }
+            } else {
+                // FFA: last player standing
+                if (survivors.length <= 1 && this.gameTime > 2.0) {
+                    this.isMatchOver = true;
+                    const winnerName = survivors.length === 1 ? survivors[0].name : "No one";
+                    
+                    const ranking = [...this.cars].sort((a, b) => {
+                        if (a.alive && !b.alive) return -1;
+                        if (!a.alive && b.alive) return 1;
+                        return b.y - a.y;
+                    });
+
+                    if (this.isMultiplayer) {
+                        hostSendGameOver(winnerName, ranking.map(r => ({ name: r.name, force: r.impactForce, alive: r.alive })));
+                        displayGameOver(winnerName, ranking);
+                    } else {
+                        displayGameOver(winnerName, ranking);
+                    }
                 }
             }
         } else {
@@ -1389,7 +1374,6 @@ class GameManager {
         const selfCar = this.cars.find(c => c.id === clientId);
         if (selfCar) {
             document.getElementById('hud-player-force').innerText = Math.round(selfCar.impactForce * 100) + '%';
-            document.getElementById('hud-player-brand').innerText = selfCar.brand;
         }
 
         const listContainer = document.getElementById('hud-players-list');
@@ -1410,7 +1394,6 @@ class GameManager {
             item.innerHTML = `
                 <span class="hud-player-name">${car.name}</span>
                 <div class="hud-player-info">
-                    <span class="hud-player-brand-tag">${car.brand}</span>
                     <span class="hud-player-force-val">${statusText} [${forceText}]</span>
                 </div>
             `;
@@ -1454,8 +1437,10 @@ class GameManager {
                 car = createCarPhysicsState(serverCar.id, serverCar.name, serverCar.brand, serverCar.x, serverCar.z);
                 car.y = serverCar.y;
                 car.yaw = serverCar.yaw;
+                car.team = serverCar.team;
                 this.cars.push(car);
             }
+            car.team = serverCar.team;
             
             if (serverCar.id === clientId) {
                 // Save current predicted state before reconciliation
@@ -1847,6 +1832,19 @@ document.getElementById('btn-type-private').addEventListener('click', () => {
     document.getElementById('btn-type-public').classList.remove('active');
 });
 
+// Game Mode toggle: FFA vs Team Battle
+document.getElementById('btn-mode-ffa').addEventListener('click', () => {
+    document.getElementById('btn-mode-ffa').classList.add('active');
+    document.getElementById('btn-mode-team').classList.remove('active');
+    currentGameMode = 'ffa';
+});
+
+document.getElementById('btn-mode-team').addEventListener('click', () => {
+    document.getElementById('btn-mode-team').classList.add('active');
+    document.getElementById('btn-mode-ffa').classList.remove('active');
+    currentGameMode = 'team';
+});
+
 document.getElementById('btn-start-host-game').addEventListener('click', () => {
     const nameInput = document.getElementById('host-player-name');
     localPlayerName = nameInput.value.trim() || getRandomRacerName();
@@ -1867,8 +1865,53 @@ document.getElementById('btn-start-host-game').addEventListener('click', () => {
         document.getElementById('host-lobby-code-display').classList.add('hidden');
     }
     
+    // Show/hide team picker in lobby based on game mode
+    const teamPicker = document.getElementById('host-lobby-team-picker');
+    if (currentGameMode === 'team') {
+        teamPicker.classList.remove('hidden');
+    } else {
+        teamPicker.classList.add('hidden');
+    }
+    
     showScreen('hostLobbyScreen');
     updateHostLobbyUI();
+});
+
+// Team toggle handlers for host lobby
+document.getElementById('btn-team-red').addEventListener('click', () => {
+    document.getElementById('btn-team-red').classList.add('active');
+    document.getElementById('btn-team-blue').classList.remove('active');
+    localPlayerTeam = 'red';
+    updateHostLobbyUI();
+    if (isHost) broadcastLobbyState();
+});
+
+document.getElementById('btn-team-blue').addEventListener('click', () => {
+    document.getElementById('btn-team-blue').classList.add('active');
+    document.getElementById('btn-team-red').classList.remove('active');
+    localPlayerTeam = 'blue';
+    updateHostLobbyUI();
+    if (isHost) broadcastLobbyState();
+});
+
+// Team toggle handlers for waiting (joining client) lobby
+document.getElementById('btn-waiting-team-red').addEventListener('click', () => {
+    document.getElementById('btn-waiting-team-red').classList.add('active');
+    document.getElementById('btn-waiting-team-blue').classList.remove('active');
+    localPlayerTeam = 'red';
+    // Notify host about team change
+    if (typeof sendRoomMessage === 'function') {
+        sendRoomMessage('TEAM_CHANGE', { team: localPlayerTeam });
+    }
+});
+
+document.getElementById('btn-waiting-team-blue').addEventListener('click', () => {
+    document.getElementById('btn-waiting-team-blue').classList.add('active');
+    document.getElementById('btn-waiting-team-red').classList.remove('active');
+    localPlayerTeam = 'blue';
+    if (typeof sendRoomMessage === 'function') {
+        sendRoomMessage('TEAM_CHANGE', { team: localPlayerTeam });
+    }
 });
 
 
@@ -1882,10 +1925,10 @@ document.getElementById('btn-host-lobby-start').addEventListener('click', () => 
     
     // Construct list of all human players
     const allPlayers = [
-        { id: clientId, name: localPlayerName, brand: localPlayerBrand }
+        { id: clientId, name: localPlayerName, brand: localPlayerBrand, team: currentGameMode === 'team' ? localPlayerTeam : undefined }
     ];
     for (let guest of lobbyPlayers) {
-        allPlayers.push({ id: guest.id, name: guest.name, brand: guest.brand });
+        allPlayers.push({ id: guest.id, name: guest.name, brand: guest.brand, team: guest.team });
     }
     
     // Only fill up remaining slots with AI bots when starting with less than 7 opponents
@@ -1894,11 +1937,14 @@ document.getElementById('btn-host-lobby-start').addEventListener('click', () => 
         for (let i = 0; i < botsCount; i++) {
             const bBrand = BRAND_KEYS[Math.floor(Math.random() * BRAND_KEYS.length)];
             const bName = "Bot " + (i + 1);
+            // In team mode, distribute bots evenly across teams
+            const botTeam = currentGameMode === 'team' ? (i % 2 === 0 ? 'red' : 'blue') : undefined;
             allPlayers.push({
                 id: 'bot_' + i,
                 name: bName,
                 brand: bBrand,
-                isBot: true
+                isBot: true,
+                team: botTeam
             });
         }
     }
@@ -1963,7 +2009,7 @@ document.getElementById('btn-join-private').addEventListener('click', () => {
     localPlayerName = document.getElementById('join-player-name').value.trim() || getRandomRacerName();
     localPlayerBrand = BRAND_KEYS[Math.floor(Math.random() * BRAND_KEYS.length)];
 
-    const result = joinPrivateRoom(code, localPlayerName, localPlayerBrand);
+    const result = joinPrivateRoom(code, localPlayerName, localPlayerBrand, localPlayerTeam);
     if (!result.success) {
         alert(result.error);
     } else {
@@ -2012,17 +2058,24 @@ function updateHostLobbyUI() {
     const hostList = document.getElementById('host-lobby-players-list');
     if (!hostList) return;
     
+    const teamBadge = currentGameMode === 'team' 
+        ? `<span style="color: ${localPlayerTeam === 'red' ? 'var(--neon-red)' : 'var(--neon-cyan)'}; margin-left: 6px;">${localPlayerTeam === 'red' ? '🔴' : '🔵'}</span>` 
+        : '';
+    
     hostList.innerHTML = `
         <li class="host-player">
-            <span>${localPlayerName} (${localPlayerBrand})</span>
+            <span>${localPlayerName}${teamBadge}</span>
             <span class="player-role">Host</span>
         </li>
     `;
     
     for (let player of lobbyPlayers) {
+        const guestTeamBadge = currentGameMode === 'team' && player.team
+            ? `<span style="color: ${player.team === 'red' ? 'var(--neon-red)' : 'var(--neon-cyan)'}; margin-left: 6px;">${player.team === 'red' ? '🔴' : '🔵'}</span>`
+            : '';
         hostList.innerHTML += `
             <li>
-                <span>${player.name} (${player.brand})</span>
+                <span>${player.name}${guestTeamBadge}</span>
             </li>
         `;
     }
@@ -2117,7 +2170,7 @@ window.handleJoinPublicRoomClick = (hostId, roomName) => {
     localPlayerName = document.getElementById('join-player-name').value.trim() || getRandomRacerName();
     localPlayerBrand = BRAND_KEYS[Math.floor(Math.random() * BRAND_KEYS.length)];
 
-    joinRoomByHostId(hostId, localPlayerName, localPlayerBrand);
+    joinRoomByHostId(hostId, localPlayerName, localPlayerBrand, localPlayerTeam);
     
     document.getElementById('waiting-room-name').innerText = roomName;
     showScreen('waitingScreen');
@@ -2128,7 +2181,26 @@ window.handleJoinPublicRoomClick = (hostId, roomName) => {
 // -------------------------------------------------------------
 
 // Lobby updates
-networkCallbacks.onLobbyUpdate = (players) => {
+networkCallbacks.onLobbyUpdate = (players, meta) => {
+    // If meta contains gameMode, apply it (so joining clients know the mode)
+    if (meta && meta.gameMode) {
+        currentGameMode = meta.gameMode;
+        const modeInfoEl = document.getElementById('waiting-mode-info');
+        const gameModeEl = document.getElementById('waiting-game-mode');
+        const teamPicker = document.getElementById('waiting-team-picker');
+        if (modeInfoEl && gameModeEl) {
+            modeInfoEl.classList.remove('hidden');
+            gameModeEl.innerText = currentGameMode === 'team' ? 'Team Battle' : 'Free For All';
+        }
+        if (teamPicker) {
+            if (currentGameMode === 'team') {
+                teamPicker.classList.remove('hidden');
+            } else {
+                teamPicker.classList.add('hidden');
+            }
+        }
+    }
+    
     if (isHost) {
         updateHostLobbyUI();
     } else {
@@ -2145,9 +2217,12 @@ networkCallbacks.onLobbyUpdate = (players) => {
         
         for (let player of players) {
             const isMe = (player.id === clientId);
+            const teamBadge = currentGameMode === 'team' && player.team
+                ? `<span style="color: ${player.team === 'red' ? 'var(--neon-red)' : 'var(--neon-cyan)'}; margin-left: 6px;">${player.team === 'red' ? '\ud83d\udd34' : '\ud83d\udd35'}</span>`
+                : '';
             guestList.innerHTML += `
                 <li>
-                    <span>${player.name} (${player.brand}) ${isMe ? '(You)' : ''}</span>
+                    <span>${player.name}${teamBadge} ${isMe ? '(You)' : ''}</span>
                 </li>
             `;
         }
@@ -2301,8 +2376,8 @@ function addHUDNotification(message) {
 
     alertBox.appendChild(msgItem);
 
-    // Only display max 3 damage logs at any one time
-    while (alertBox.children.length > 3) {
+    // Only display max 2 damage logs at any one time
+    while (alertBox.children.length > 2) {
         alertBox.removeChild(alertBox.firstChild);
     }
 
@@ -2330,29 +2405,58 @@ function initFullscreenButton() {
     const fullscreenBtn = document.getElementById('btn-mobile-fullscreen');
     if (!fullscreenBtn) return;
     
+    function requestFullscreenCompat(el) {
+        if (el.requestFullscreen) {
+            return el.requestFullscreen();
+        } else if (el.webkitRequestFullscreen) {
+            return el.webkitRequestFullscreen(); // Safari / iOS
+        } else if (el.msRequestFullscreen) {
+            return el.msRequestFullscreen();
+        }
+        return Promise.reject(new Error('Fullscreen API not supported'));
+    }
+    
+    function exitFullscreenCompat() {
+        if (document.exitFullscreen) {
+            return document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            return document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+            return document.msExitFullscreen();
+        }
+        return Promise.reject(new Error('Exit fullscreen not supported'));
+    }
+    
+    function getFullscreenElement() {
+        return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+    }
+    
     fullscreenBtn.addEventListener('click', () => {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => {
+        if (!getFullscreenElement()) {
+            requestFullscreenCompat(document.documentElement).catch(err => {
                 console.log(`Error attempting to enable fullscreen: ${err.message}`);
             });
         } else {
-            document.exitFullscreen();
+            exitFullscreenCompat();
         }
     });
     
-    document.addEventListener('fullscreenchange', () => {
-        if (document.fullscreenElement) {
-            fullscreenBtn.innerHTML = `
-                <svg viewBox="0 0 24 24" width="20" height="20">
-                    <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" fill="currentColor" />
-                </svg>
-            `;
-        } else {
-            fullscreenBtn.innerHTML = `
-                <svg viewBox="0 0 24 24" width="20" height="20">
-                    <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" fill="currentColor" />
-                </svg>
-            `;
-        }
+    const fsChangeEvents = ['fullscreenchange', 'webkitfullscreenchange', 'MSFullscreenChange'];
+    fsChangeEvents.forEach(evName => {
+        document.addEventListener(evName, () => {
+            if (getFullscreenElement()) {
+                fullscreenBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" fill="currentColor" />
+                    </svg>
+                `;
+            } else {
+                fullscreenBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" fill="currentColor" />
+                    </svg>
+                `;
+            }
+        });
     });
 }

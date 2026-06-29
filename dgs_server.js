@@ -83,7 +83,7 @@ function spawnPowerup() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Game room simulation lifecycle
 // ─────────────────────────────────────────────────────────────────────────────
-function startGameRoom(room, players, skybox) {
+function startGameRoom(room, players, skybox, gameMode) {
     // Allow restart if the previous match ended (matchOver=true).
     // Block only if a match is actively running.
     if (room.isStarted && !room.matchOver) return;
@@ -95,6 +95,7 @@ function startGameRoom(room, players, skybox) {
     }
 
     room.isStarted    = true;
+    room.gameMode     = gameMode || 'ffa';
 
     room.matchOver    = false;
     room.gameTime     = 0;
@@ -121,6 +122,7 @@ function startGameRoom(room, players, skybox) {
         );
         car.yaw   = angle + Math.PI;
         car.isBot = !!p.isBot;
+        car.team  = p.team;
         // Pending shoot state (set from INPUT_UPDATE messages)
         car._pendingShoot  = false;
         car._pendingAimYaw = 0;
@@ -299,9 +301,27 @@ function startGameRoom(room, players, skybox) {
 
         // ── Win condition ────────────────────────────────────────────────
         const survivors = room.cars.filter(c => c.alive);
-        if (survivors.length <= 1 && room.gameTime > 2.0) {
+        let matchEnds = false;
+        let winnerName = 'No one';
+
+        if (room.gameMode === 'team') {
+            if (survivors.length >= 1 && room.gameTime > 2.0) {
+                const aliveTeams = new Set(survivors.map(c => c.team || 'blue'));
+                if (aliveTeams.size <= 1) {
+                    matchEnds = true;
+                    const winningTeam = survivors[0] ? (survivors[0].team || 'blue') : 'none';
+                    winnerName = winningTeam === 'red' ? '🔴 Red Team' : '🔵 Blue Team';
+                }
+            }
+        } else {
+            if (survivors.length <= 1 && room.gameTime > 2.0) {
+                matchEnds = true;
+                winnerName = survivors.length === 1 ? survivors[0].name : 'No one';
+            }
+        }
+
+        if (matchEnds) {
             room.matchOver = true;
-            const winnerName = survivors.length === 1 ? survivors[0].name : 'No one';
             const ranking    = [...room.cars].sort((a, b) => {
                 if (a.alive && !b.alive) return -1;
                 if (!a.alive && b.alive) return 1;
@@ -312,7 +332,8 @@ function startGameRoom(room, players, skybox) {
                 leaderboard: ranking.map(r => ({
                     name:  r.name,
                     force: r.impactForce,
-                    alive: r.alive
+                    alive: r.alive,
+                    team:  r.team
                 }))
             });
             clearInterval(room.physicsInterval);
@@ -341,6 +362,7 @@ function startGameRoom(room, players, skybox) {
                     vz:          c.vz,
                     inputSteer:  c.inputSteer,
                     impactForce: c.impactForce,
+                    team:        c.team,
                     lastProcessedSeq: c._lastProcessedSeq || 0
                 })),
                 bullets: room.bullets.map(b => ({
@@ -523,8 +545,8 @@ wss.on('connection', (ws) => {
 
             // ── START_GAME: start server simulation, relay to all clients ──
             if (innerType === 'START_GAME') {
-                const { players, skybox } = innerData;
-                startGameRoom(room, players, skybox);
+                const { players, skybox, gameMode } = innerData;
+                startGameRoom(room, players, skybox, gameMode);
                 // Relay START_GAME to ALL clients in the room (including the host)
                 broadcast(room, {
                     type: 'room_relay',
