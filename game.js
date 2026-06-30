@@ -28,6 +28,7 @@ if (isMobileDevice) {
     } else {
         checkOrientation();
     }
+}
 // Prevent zoom on touch events for mobile browsers (disables double-tap and pinch-to-zoom)
 if (isMobileDevice) {
     document.addEventListener('touchstart', (e) => {
