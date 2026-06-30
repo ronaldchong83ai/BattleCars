@@ -369,7 +369,6 @@ function createSkybox(chosenFile) {
     const filePath = chosenFile.startsWith('Skylines/') ? chosenFile : 'Skylines/' + chosenFile;
     textureLoader.load(filePath, (texture) => {
         texture.wrapS = THREE.RepeatWrapping;
-        texture.repeat.x = -1; // Invert to face inward correctly
         
         const skyMat = new THREE.MeshBasicMaterial({
             map: texture,
@@ -383,6 +382,7 @@ function createSkybox(chosenFile) {
         }
         
         skyboxMesh = new THREE.Mesh(skyGeo, skyMat);
+        skyboxMesh.scale.set(-1, 1, 1); // Flip inside-out to face inward without seam artifacts
         scene.add(skyboxMesh);
     }, undefined, (err) => {
         console.warn("Could not load skybox texture: " + chosenFile + ", falling back to gradient.", err);
@@ -1647,7 +1647,7 @@ class GameManager {
             const forceText = Math.round(car.impactForce * 100) + '%';
 
             let teamDot = '';
-            if (currentGameMode === 'team' && car.team) {
+            if (car.team) {
                 const dotColor = car.team === 'red' ? 'var(--neon-red)' : 'var(--neon-cyan)';
                 teamDot = `<span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${dotColor}; margin-right: 8px; box-shadow: 0 0 8px ${dotColor}; vertical-align: middle;"></span>`;
             }
@@ -2591,7 +2591,17 @@ networkCallbacks.onGameOverNotify = (winnerName, ranking) => {
  * Display the final screen and leaderboard.
  */
 function displayGameOver(winnerName, ranking) {
-    const isWin = (winnerName === localPlayerName);
+    let isWin = (winnerName === localPlayerName);
+    
+    // In team battle, determine victory based on team
+    if (currentGameMode === 'team') {
+        const localCar = gameManager ? gameManager.cars.find(c => c.id === clientId) : null;
+        const localTeam = localCar ? localCar.team : localPlayerTeam;
+        const winnerTeam = winnerName.includes("Red") ? "red" : (winnerName.includes("Blue") ? "blue" : "");
+        if (winnerTeam && localTeam && winnerTeam === localTeam) {
+            isWin = true;
+        }
+    }
     
     const titleEl = document.getElementById('game-over-title');
     titleEl.innerText = isWin ? "VICTORY" : "DEFEAT";
@@ -2611,7 +2621,7 @@ function displayGameOver(winnerName, ranking) {
         const dispForce = forceVal !== undefined ? forceVal : 1.0;
 
         let teamDot = '';
-        if (currentGameMode === 'team' && entry.team) {
+        if (entry.team) {
             const dotColor = entry.team === 'red' ? 'var(--neon-red)' : 'var(--neon-cyan)';
             teamDot = `<span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${dotColor}; margin-right: 8px; box-shadow: 0 0 8px ${dotColor}; vertical-align: middle;"></span>`;
         }
