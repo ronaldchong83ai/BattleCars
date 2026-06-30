@@ -1370,17 +1370,20 @@ class GameManager {
             }
         }
 
-        // Hide mobile controls during spectating
+        // Hide mobile controls and impact force panel during spectating
         const joystickEl = document.getElementById('mobile-joystick');
         const shootEl = document.getElementById('mobile-shoot');
+        const forcePanel = document.querySelector('.player-status-panel');
         if (isSpectating) {
             if (joystickEl) joystickEl.style.setProperty('display', 'none', 'important');
             if (shootEl) shootEl.style.setProperty('display', 'none', 'important');
+            if (forcePanel) forcePanel.style.setProperty('display', 'none', 'important');
         } else {
             if (isMobileDevice) {
                 if (joystickEl) joystickEl.style.removeProperty('display');
                 if (shootEl) shootEl.style.removeProperty('display');
             }
+            if (forcePanel) forcePanel.style.removeProperty('display');
         }
 
         const controlsHelper = document.querySelector('.controls-helper');
