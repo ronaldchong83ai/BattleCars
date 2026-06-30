@@ -1476,3 +1476,50 @@ body.is-mobile .mobile-fullscreen-btn {
     }
 }
 
+/* PWA Install Prompt Mobile Landscape Adaptations */
+@media (max-height: 450px) {
+    #pwa-install-overlay .panel {
+        padding: 15px 25px !important;
+        margin: 5px !important;
+        max-width: 90% !important;
+        border-radius: 8px !important;
+        gap: 8px !important;
+    }
+    #pwa-install-overlay h1 {
+        font-size: 18px !important;
+        margin-top: 0 !important;
+        margin-bottom: 5px !important;
+    }
+    #pwa-install-overlay p {
+        font-size: 13px !important;
+        margin-bottom: 8px !important;
+        line-height: 1.4 !important;
+    }
+    #pwa-install-overlay img {
+        width: 45px !important;
+        height: 45px !important;
+        margin-bottom: 5px !important;
+        border-radius: 10px !important;
+    }
+    #btn-pwa-install {
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+    }
+    #pwa-trigger-ios, #pwa-trigger-other {
+        padding: 8px 12px !important;
+        border-radius: 6px !important;
+    }
+    #pwa-trigger-ios ol {
+        font-size: 12px !important;
+        line-height: 1.5 !important;
+    }
+    #pwa-trigger-other p {
+        font-size: 12px !important;
+        line-height: 1.4 !important;
+    }
+    #pwa-bypass-link {
+        margin-top: 10px !important;
+        font-size: 11px !important;
+    }
+}
+

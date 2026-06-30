@@ -1363,7 +1363,7 @@ class GameManager {
         // Update Spectating HUD Status and Spectator Exit Button
         const exitBtn = document.getElementById('btn-spectator-exit');
         if (exitBtn) {
-            if (isSpectating && this.isMultiplayer && !this.isMatchOver) {
+            if (isSpectating && !this.isMatchOver) {
                 exitBtn.classList.remove('hidden');
             } else {
                 exitBtn.classList.add('hidden');
