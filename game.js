@@ -2068,62 +2068,80 @@ function getRandomRacerName() {
     return RACER_NAMES[Math.floor(Math.random() * RACER_NAMES.length)];
 }
 
+// Helper to safely add event listeners without crashing if DOM elements are missing (e.g. on cached/old pages)
+function addSafeListener(id, event, callback) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener(event, callback);
+        return el;
+    }
+    return null;
+}
+
 // Single-player Config Menu Setup
-document.getElementById('btn-ai-menu').addEventListener('click', () => {
+addSafeListener('btn-ai-menu', 'click', () => {
     showScreen('aiScreen');
     const nameInput = document.getElementById('ai-player-name');
-    if (!nameInput.value) {
+    if (nameInput && !nameInput.value) {
         nameInput.value = getRandomRacerName();
     }
 });
 
 const aiSlider = document.getElementById('ai-bot-count');
-aiSlider.addEventListener('input', (e) => {
-    document.getElementById('ai-bot-value').innerText = e.target.value + ' Bots';
-});
+if (aiSlider) {
+    aiSlider.addEventListener('input', (e) => {
+        const valEl = document.getElementById('ai-bot-value');
+        if (valEl) valEl.innerText = e.target.value + ' Bots';
+    });
+}
 
-document.getElementById('btn-start-ai').addEventListener('click', () => {
-    const botCount = parseInt(aiSlider.value);
+addSafeListener('btn-start-ai', 'click', () => {
+    const botCount = aiSlider ? parseInt(aiSlider.value) : 3;
     
-    localPlayerName = document.getElementById('ai-player-name').value.trim() || getRandomRacerName();
+    const nameInput = document.getElementById('ai-player-name');
+    localPlayerName = nameInput ? (nameInput.value.trim() || getRandomRacerName()) : getRandomRacerName();
     localPlayerBrand = getDifferentRandomBrand(localPlayerBrand);
 
     showScreen('hud');
     gameManager = new GameManager(false, botCount);
 });
 
-document.getElementById('btn-back-ai').addEventListener('click', () => {
+addSafeListener('btn-back-ai', 'click', () => {
     showScreen('mainMenu');
 });
 
 // Instructions Menu
-document.getElementById('btn-instructions-menu').addEventListener('click', () => {
+addSafeListener('btn-instructions-menu', 'click', () => {
     showScreen('instructionsScreen');
 });
 
-document.getElementById('btn-back-instructions').addEventListener('click', () => {
+addSafeListener('btn-back-instructions', 'click', () => {
     showScreen('mainMenu');
 });
 
 // Multiplayer Hosting Menu
-document.getElementById('btn-host-menu').addEventListener('click', () => {
+addSafeListener('btn-host-menu', 'click', () => {
     showScreen('hostScreen');
     
     // Default config values
     isHost = true;
-    document.getElementById('btn-type-public').classList.add('active');
-    document.getElementById('btn-type-private').classList.remove('active');
+    const pubBtn = document.getElementById('btn-type-public');
+    if (pubBtn) pubBtn.classList.add('active');
+    const privBtn = document.getElementById('btn-type-private');
+    if (privBtn) privBtn.classList.remove('active');
     
     const nameInput = document.getElementById('host-player-name');
-    if (!nameInput.value) {
-        nameInput.value = getRandomRacerName();
+    if (nameInput) {
+        if (!nameInput.value) {
+            nameInput.value = getRandomRacerName();
+        }
+        localPlayerName = nameInput.value;
     }
-    localPlayerName = nameInput.value;
     localPlayerBrand = BRAND_KEYS[Math.floor(Math.random() * BRAND_KEYS.length)];
 });
 
 // Listen to Host name input changes to update lobby list in real time
-document.getElementById('host-player-name').addEventListener('input', (e) => {
+addSafeListener('host-player-name', 'input', (e) => {
     localPlayerName = e.target.value.trim() || "Host Player";
     updateHostLobbyUI();
     if (isHost) {
@@ -2132,67 +2150,88 @@ document.getElementById('host-player-name').addEventListener('input', (e) => {
 });
 
 // Toggle public vs private room hosting
-document.getElementById('btn-type-public').addEventListener('click', () => {
-    document.getElementById('btn-type-public').classList.add('active');
-    document.getElementById('btn-type-private').classList.remove('active');
+addSafeListener('btn-type-public', 'click', () => {
+    const pubBtn = document.getElementById('btn-type-public');
+    if (pubBtn) pubBtn.classList.add('active');
+    const privBtn = document.getElementById('btn-type-private');
+    if (privBtn) privBtn.classList.remove('active');
 });
 
-document.getElementById('btn-type-private').addEventListener('click', () => {
-    document.getElementById('btn-type-private').classList.add('active');
-    document.getElementById('btn-type-public').classList.remove('active');
+addSafeListener('btn-type-private', 'click', () => {
+    const privBtn = document.getElementById('btn-type-private');
+    if (privBtn) privBtn.classList.add('active');
+    const pubBtn = document.getElementById('btn-type-public');
+    if (pubBtn) pubBtn.classList.remove('active');
 });
 
 // Game Mode toggle: FFA vs Team Battle vs Race
-document.getElementById('btn-mode-ffa').addEventListener('click', () => {
-    document.getElementById('btn-mode-ffa').classList.add('active');
-    document.getElementById('btn-mode-team').classList.remove('active');
-    document.getElementById('btn-mode-race').classList.remove('active');
+addSafeListener('btn-mode-ffa', 'click', () => {
+    const ffaBtn = document.getElementById('btn-mode-ffa');
+    if (ffaBtn) ffaBtn.classList.add('active');
+    const teamBtn = document.getElementById('btn-mode-team');
+    if (teamBtn) teamBtn.classList.remove('active');
+    const raceBtn = document.getElementById('btn-mode-race');
+    if (raceBtn) raceBtn.classList.remove('active');
     currentGameMode = 'ffa';
 });
 
-document.getElementById('btn-mode-team').addEventListener('click', () => {
-    document.getElementById('btn-mode-team').classList.add('active');
-    document.getElementById('btn-mode-ffa').classList.remove('active');
-    document.getElementById('btn-mode-race').classList.remove('active');
+addSafeListener('btn-mode-team', 'click', () => {
+    const teamBtn = document.getElementById('btn-mode-team');
+    if (teamBtn) teamBtn.classList.add('active');
+    const ffaBtn = document.getElementById('btn-mode-ffa');
+    if (ffaBtn) ffaBtn.classList.remove('active');
+    const raceBtn = document.getElementById('btn-mode-race');
+    if (raceBtn) raceBtn.classList.remove('active');
     currentGameMode = 'team';
 });
 
-document.getElementById('btn-mode-race').addEventListener('click', () => {
-    document.getElementById('btn-mode-race').classList.add('active');
-    document.getElementById('btn-mode-ffa').classList.remove('active');
-    document.getElementById('btn-mode-team').classList.remove('active');
+addSafeListener('btn-mode-race', 'click', () => {
+    const raceBtn = document.getElementById('btn-mode-race');
+    if (raceBtn) raceBtn.classList.add('active');
+    const ffaBtn = document.getElementById('btn-mode-ffa');
+    if (ffaBtn) ffaBtn.classList.remove('active');
+    const teamBtn = document.getElementById('btn-mode-team');
+    if (teamBtn) teamBtn.classList.remove('active');
     currentGameMode = 'race';
     // Race mode doesn't use teams; hide team picker
     const teamPicker = document.getElementById('host-lobby-team-picker');
     if (teamPicker) teamPicker.classList.add('hidden');
 });
 
-document.getElementById('btn-start-host-game').addEventListener('click', () => {
+addSafeListener('btn-start-host-game', 'click', () => {
     const nameInput = document.getElementById('host-player-name');
-    localPlayerName = nameInput.value.trim() || getRandomRacerName();
+    localPlayerName = nameInput ? (nameInput.value.trim() || getRandomRacerName()) : getRandomRacerName();
     localPlayerBrand = BRAND_KEYS[Math.floor(Math.random() * BRAND_KEYS.length)];
     
-    const roomName = document.getElementById('host-room-name').value.trim() || "Singapore Arena";
-    const isPrivate = document.getElementById('btn-type-private').classList.contains('active');
+    const rNameInput = document.getElementById('host-room-name');
+    const roomName = rNameInput ? (rNameInput.value.trim() || "Singapore Arena") : "Singapore Arena";
+    const privBtn = document.getElementById('btn-type-private');
+    const isPrivate = privBtn ? privBtn.classList.contains('active') : false;
 
     // Host room
     hostRoom(roomName, isPrivate);
     
     // Configure lobby waiting screen elements
-    document.getElementById('host-lobby-room-name').innerText = roomName;
+    const roomNameEl = document.getElementById('host-lobby-room-name');
+    if (roomNameEl) roomNameEl.innerText = roomName;
     if (isPrivate) {
-        document.getElementById('host-lobby-code-display').classList.remove('hidden');
-        document.getElementById('host-lobby-private-code').innerText = currentRoomCode;
+        const codeDisplay = document.getElementById('host-lobby-code-display');
+        if (codeDisplay) codeDisplay.classList.remove('hidden');
+        const codeText = document.getElementById('host-lobby-private-code');
+        if (codeText) codeText.innerText = currentRoomCode;
     } else {
-        document.getElementById('host-lobby-code-display').classList.add('hidden');
+        const codeDisplay = document.getElementById('host-lobby-code-display');
+        if (codeDisplay) codeDisplay.classList.add('hidden');
     }
     
     // Show/hide team picker in lobby based on game mode
     const teamPicker = document.getElementById('host-lobby-team-picker');
-    if (currentGameMode === 'team') {
-        teamPicker.classList.remove('hidden');
-    } else {
-        teamPicker.classList.add('hidden');
+    if (teamPicker) {
+        if (currentGameMode === 'team') {
+            teamPicker.classList.remove('hidden');
+        } else {
+            teamPicker.classList.add('hidden');
+        }
     }
     
     showScreen('hostLobbyScreen');
@@ -2200,26 +2239,32 @@ document.getElementById('btn-start-host-game').addEventListener('click', () => {
 });
 
 // Team toggle handlers for host lobby
-document.getElementById('btn-team-red').addEventListener('click', () => {
-    document.getElementById('btn-team-red').classList.add('active');
-    document.getElementById('btn-team-blue').classList.remove('active');
+addSafeListener('btn-team-red', 'click', () => {
+    const redBtn = document.getElementById('btn-team-red');
+    if (redBtn) redBtn.classList.add('active');
+    const blueBtn = document.getElementById('btn-team-blue');
+    if (blueBtn) blueBtn.classList.remove('active');
     localPlayerTeam = 'red';
     updateHostLobbyUI();
     if (isHost) broadcastLobbyState();
 });
 
-document.getElementById('btn-team-blue').addEventListener('click', () => {
-    document.getElementById('btn-team-blue').classList.add('active');
-    document.getElementById('btn-team-red').classList.remove('active');
+addSafeListener('btn-team-blue', 'click', () => {
+    const blueBtn = document.getElementById('btn-team-blue');
+    if (blueBtn) blueBtn.classList.add('active');
+    const redBtn = document.getElementById('btn-team-red');
+    if (redBtn) redBtn.classList.remove('active');
     localPlayerTeam = 'blue';
     updateHostLobbyUI();
     if (isHost) broadcastLobbyState();
 });
 
 // Team toggle handlers for waiting (joining client) lobby
-document.getElementById('btn-waiting-team-red').addEventListener('click', () => {
-    document.getElementById('btn-waiting-team-red').classList.add('active');
-    document.getElementById('btn-waiting-team-blue').classList.remove('active');
+addSafeListener('btn-waiting-team-red', 'click', () => {
+    const redBtn = document.getElementById('btn-waiting-team-red');
+    if (redBtn) redBtn.classList.add('active');
+    const blueBtn = document.getElementById('btn-waiting-team-blue');
+    if (blueBtn) blueBtn.classList.remove('active');
     localPlayerTeam = 'red';
     // Notify host about team change
     if (typeof sendRoomMessage === 'function') {
@@ -2227,17 +2272,18 @@ document.getElementById('btn-waiting-team-red').addEventListener('click', () => 
     }
 });
 
-document.getElementById('btn-waiting-team-blue').addEventListener('click', () => {
-    document.getElementById('btn-waiting-team-blue').classList.add('active');
-    document.getElementById('btn-waiting-team-red').classList.remove('active');
+addSafeListener('btn-waiting-team-blue', 'click', () => {
+    const blueBtn = document.getElementById('btn-waiting-team-blue');
+    if (blueBtn) blueBtn.classList.add('active');
+    const redBtn = document.getElementById('btn-waiting-team-red');
+    if (redBtn) redBtn.classList.remove('active');
     localPlayerTeam = 'blue';
     if (typeof sendRoomMessage === 'function') {
         sendRoomMessage('TEAM_CHANGE', { playerId: clientId, team: localPlayerTeam });
     }
 });
 
-
-document.getElementById('btn-host-lobby-start').addEventListener('click', () => {
+addSafeListener('btn-host-lobby-start', 'click', () => {
     if (lobbyPlayers.length === 0) return; // prevent start if no opponent joined
     
     window.gameStarted = true;
@@ -2288,28 +2334,24 @@ document.getElementById('btn-host-lobby-start').addEventListener('click', () => 
     
     // Send START_GAME to DGS (which will start physics simulation and relay back to all)
     hostStartGame(allPlayers, chosenSkybox.file);
-    
-    // Show HUD immediately for the host (GameManager will be created when onStartGame fires)
-    // showScreen('hud') is called inside onStartGame
 });
 
-
-document.getElementById('btn-host-lobby-cancel').addEventListener('click', () => {
+addSafeListener('btn-host-lobby-cancel', 'click', () => {
     leaveRoom();
     showScreen('mainMenu');
 });
 
-document.getElementById('btn-back-host').addEventListener('click', () => {
+addSafeListener('btn-back-host', 'click', () => {
     leaveRoom();
     showScreen('mainMenu');
 });
 
 // Multiplayer Join Menu
-document.getElementById('btn-join-menu').addEventListener('click', () => {
+addSafeListener('btn-join-menu', 'click', () => {
     showScreen('joinScreen');
     
     const nameInput = document.getElementById('join-player-name');
-    if (!nameInput.value) {
+    if (nameInput && !nameInput.value) {
         nameInput.value = getRandomRacerName();
     }
     
@@ -2317,40 +2359,43 @@ document.getElementById('btn-join-menu').addEventListener('click', () => {
     refreshRoomsTable();
 });
 
-document.getElementById('btn-search-room').addEventListener('click', () => {
+addSafeListener('btn-search-room', 'click', () => {
     refreshRoomsTable();
 });
 
-document.getElementById('btn-join-private').addEventListener('click', () => {
-    const code = document.getElementById('join-private-code').value.trim();
+addSafeListener('btn-join-private', 'click', () => {
+    const codeInput = document.getElementById('join-private-code');
+    const code = codeInput ? codeInput.value.trim() : "";
     if (code.length !== 6) {
         alert("Please enter a valid 6-digit room code.");
         return;
     }
     
-    localPlayerName = document.getElementById('join-player-name').value.trim() || getRandomRacerName();
+    const nameInput = document.getElementById('join-player-name');
+    localPlayerName = nameInput ? (nameInput.value.trim() || getRandomRacerName()) : getRandomRacerName();
     localPlayerBrand = BRAND_KEYS[Math.floor(Math.random() * BRAND_KEYS.length)];
 
     const result = joinPrivateRoom(code, localPlayerName, localPlayerBrand, localPlayerTeam);
     if (!result.success) {
         alert(result.error);
     } else {
-        document.getElementById('waiting-room-name').innerText = `Private Room [Code: ${code}]`;
+        const roomNameEl = document.getElementById('waiting-room-name');
+        if (roomNameEl) roomNameEl.innerText = `Private Room [Code: ${code}]`;
         showScreen('waitingScreen');
     }
 });
 
-document.getElementById('btn-back-join').addEventListener('click', () => {
+addSafeListener('btn-back-join', 'click', () => {
     showScreen('mainMenu');
 });
 
-document.getElementById('btn-leave-lobby').addEventListener('click', () => {
+addSafeListener('btn-leave-lobby', 'click', () => {
     leaveRoom();
     showScreen('mainMenu');
 });
 
 // Game Over Exit buttons
-document.getElementById('btn-restart').addEventListener('click', () => {
+addSafeListener('btn-restart', 'click', () => {
     // If AI game, restart directly
     if (gameManager && !gameManager.isMultiplayer) {
         const bCount = gameManager.chosenBots;
@@ -2368,12 +2413,12 @@ document.getElementById('btn-restart').addEventListener('click', () => {
     }
 });
 
-document.getElementById('btn-exit-lobby').addEventListener('click', () => {
+addSafeListener('btn-exit-lobby', 'click', () => {
     leaveRoom();
     showScreen('mainMenu');
 });
 
-document.getElementById('btn-spectator-exit').addEventListener('click', () => {
+addSafeListener('btn-spectator-exit', 'click', () => {
     leaveRoom();
     window.location.reload();
 });
