@@ -2467,9 +2467,34 @@ function initFullscreenButton() {
     }
     
     fullscreenBtn.addEventListener('click', () => {
+        // Detect if iOS and not in standalone PWA mode
+        const ua = navigator.userAgent.toLowerCase();
+        const isIos = /iphone|ipad|ipod/.test(ua);
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        
+        if (isIos && !isStandalone) {
+            // iOS Safari on iPhone does not support the Fullscreen API on arbitrary DOM elements.
+            // Explain and show the PWA installation guide overlay.
+            alert("Fullscreen on iPhone requires adding the app to your Home Screen.\n\nOpening the installation guide...");
+            const pwaOverlay = document.getElementById('pwa-install-overlay');
+            if (pwaOverlay) {
+                pwaOverlay.classList.remove('hidden');
+                pwaOverlay.style.display = 'flex';
+                // Force iOS-specific instructions
+                const chromeTrigger = document.getElementById('pwa-trigger-chrome');
+                const iosTrigger = document.getElementById('pwa-trigger-ios');
+                const otherTrigger = document.getElementById('pwa-trigger-other');
+                if (chromeTrigger) chromeTrigger.classList.add('hidden');
+                if (iosTrigger) iosTrigger.classList.remove('hidden');
+                if (otherTrigger) otherTrigger.classList.add('hidden');
+            }
+            return;
+        }
+
         if (!getFullscreenElement()) {
             requestFullscreenCompat(document.documentElement).catch(err => {
                 console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                alert("Fullscreen mode is not supported by your browser. Please add the app to your Home Screen for a full-screen experience.");
             });
         } else {
             exitFullscreenCompat();
