@@ -2567,8 +2567,14 @@ window.addEventListener('beforeinstallprompt', (e) => {
     }
 });
 
-// Install Button click trigger
-document.addEventListener('DOMContentLoaded', () => {
+// Install Button click trigger / PWA setup
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPwaInstall);
+} else {
+    initPwaInstall();
+}
+
+function initPwaInstall() {
     const installBtn = document.getElementById('btn-pwa-install');
     if (installBtn) {
         installBtn.addEventListener('click', async () => {
@@ -2601,7 +2607,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial check
     checkPwaInstallState();
-});
+}
 
 // Also trigger on appinstalled event
 window.addEventListener('appinstalled', () => {
