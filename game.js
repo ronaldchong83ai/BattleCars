@@ -74,7 +74,55 @@ let previousMouseX = 0;
 let localPlayerName = "Player";
 let localPlayerBrand = "BMW";
 var localPlayerTeam = "blue"; // 'blue' or 'red' — only used in team battle mode
-var currentGameMode = "ffa"; // 'ffa' (Free For All) or 'team' (Team Battle)
+var currentGameMode = "ffa"; // 'ffa', 'team', or 'race'
+
+// Race Track Global State
+const RACE_TRACK_DEFINITIONS = {
+    'singapore_skyline.png': [
+        {x:50,z:0},{x:45,z:20},{x:30,z:38},{x:10,z:48},{x:-10,z:48},
+        {x:-30,z:38},{x:-45,z:20},{x:-50,z:0},{x:-45,z:-20},{x:-30,z:-38},
+        {x:-10,z:-48},{x:10,z:-48},{x:30,z:-38},{x:45,z:-20}
+    ],
+    'tokyo_skyline.png': [
+        {x:55,z:5},{x:40,z:25},{x:15,z:35},{x:-10,z:30},{x:-30,z:15},
+        {x:-40,z:-5},{x:-30,z:-25},{x:-10,z:-38},{x:15,z:-42},{x:40,z:-30},{x:55,z:-10}
+    ],
+    'paris_skyline.png': [
+        {x:0,z:-52},{x:30,z:-35},{x:48,z:0},{x:30,z:35},{x:0,z:52},
+        {x:-30,z:35},{x:-48,z:0},{x:-30,z:-35}
+    ],
+    'new_york_skyline.png': [
+        {x:50,z:-35},{x:50,z:35},{x:-50,z:35},{x:-50,z:-35}
+    ],
+    'london_skyline.png': [
+        {x:30,z:-50},{x:50,z:-20},{x:45,z:20},{x:20,z:45},{x:-15,z:50},
+        {x:-45,z:30},{x:-52,z:-5},{x:-35,z:-40},{x:0,z:-55}
+    ],
+    'sydney_skyline.png': [
+        {x:55,z:0},{x:40,z:30},{x:10,z:50},{x:-20,z:45},{x:-45,z:20},
+        {x:-50,z:-15},{x:-30,z:-42},{x:10,z:-52},{x:40,z:-35}
+    ],
+    'cairo_skyline.png': [
+        {x:0,z:-52},{x:42,z:-30},{x:52,z:0},{x:42,z:30},{x:0,z:52},
+        {x:-42,z:30},{x:-52,z:0},{x:-42,z:-30}
+    ],
+    'rio_skyline.png': [
+        {x:35,z:-45},{x:55,z:-15},{x:55,z:15},{x:35,z:45},{x:0,z:50},
+        {x:-35,z:45},{x:-55,z:15},{x:-55,z:-15},{x:-35,z:-45},{x:0,z:-50}
+    ]
+};
+const RACE_CHECKPOINT_INDICES = {
+    'singapore_skyline.png':  [0, 3, 7, 10],
+    'tokyo_skyline.png':      [0, 3, 6, 9],
+    'paris_skyline.png':      [0, 2, 4, 6],
+    'new_york_skyline.png':   [0, 1, 2, 3],
+    'london_skyline.png':     [0, 2, 4, 7],
+    'sydney_skyline.png':     [0, 2, 4, 7],
+    'cairo_skyline.png':      [0, 2, 4, 6],
+    'rio_skyline.png':        [0, 2, 5, 8]
+};
+const RACE_TOTAL_LAPS = 3;
+let activeRaceTrackGroup = null; // Three.js group for race track ribbon
 
 // Brand definitions: styling colors and visual configurations
 const CAR_BRANDS = {
@@ -211,6 +259,103 @@ function getRandomSkybox() {
         { file: 'rio_skyline.png', name: 'Rio Arena' }
     ];
     return options[Math.floor(Math.random() * options.length)];
+}
+
+/**
+ * Creates and renders the race track ribbon for the current skyline.
+ */
+function createRaceTrack(skyboxFile) {
+    destroyRaceTrack();
+    const waypoints = RACE_TRACK_DEFINITIONS[skyboxFile] || RACE_TRACK_DEFINITIONS['singapore_skyline.png'];
+    if (!waypoints || waypoints.length < 2) return;
+
+    // Store on window so AI and checkpoint logic can access it
+    window.raceTrackWaypoints = waypoints;
+    window.raceCheckpointIndices = RACE_CHECKPOINT_INDICES[skyboxFile] || RACE_CHECKPOINT_INDICES['singapore_skyline.png'];
+
+    const group = new THREE.Group();
+    const trackWidth = 12;
+    const trackY = 0.08;
+
+    // Build CatmullRom spline through waypoints (closed loop)
+    const splinePoints = waypoints.map(wp => new THREE.Vector3(wp.x, trackY, wp.z));
+    splinePoints.push(splinePoints[0].clone()); // close loop
+    const curve = new THREE.CatmullRomCurve3(splinePoints, true);
+    const tubeGeo = new THREE.TubeGeometry(curve, waypoints.length * 6, trackWidth / 2, 8, true);
+    const tubeMat = new THREE.MeshStandardMaterial({
+        color: 0xffcc00,
+        emissive: 0x553300,
+        emissiveIntensity: 0.4,
+        roughness: 0.5,
+        metalness: 0.3,
+        transparent: true,
+        opacity: 0.28,
+        side: THREE.DoubleSide
+    });
+    const trackMesh = new THREE.Mesh(tubeGeo, tubeMat);
+    group.add(trackMesh);
+
+    // Glowing centreline
+    const centrePoints = curve.getPoints(waypoints.length * 8);
+    const centreGeo = new THREE.BufferGeometry().setFromPoints(centrePoints);
+    const centreMat = new THREE.LineBasicMaterial({
+        color: 0xffcc00,
+        transparent: true,
+        opacity: 0.65,
+        linewidth: 2
+    });
+    const centreLine = new THREE.Line(centreGeo, centreMat);
+    group.add(centreLine);
+
+    // Checkpoint gates (cyan glowing bars)
+    const cpIndices = RACE_CHECKPOINT_INDICES[skyboxFile] || RACE_CHECKPOINT_INDICES['singapore_skyline.png'];
+    for (const cpIdx of cpIndices) {
+        const wp = waypoints[cpIdx];
+        const prevWp = cpIdx > 0 ? waypoints[cpIdx - 1] : waypoints[waypoints.length - 1];
+        const trackDx = wp.x - prevWp.x;
+        const trackDz = wp.z - prevWp.z;
+        const trackLen = Math.sqrt(trackDx * trackDx + trackDz * trackDz) || 1;
+
+        // Gate spans perpendicular to track
+        const gateGeo = new THREE.BoxGeometry(trackWidth + 4, 3, 0.5);
+        const gateMat = new THREE.MeshBasicMaterial({
+            color: 0x00f2fe,
+            transparent: true,
+            opacity: 0.55
+        });
+        const gate = new THREE.Mesh(gateGeo, gateMat);
+        gate.position.set(wp.x, 1.5, wp.z);
+        // Rotate gate to face along track direction
+        gate.rotation.y = Math.atan2(trackDx, trackDz);
+        group.add(gate);
+    }
+
+    // Start/Finish line (bold red/white stripe at first waypoint)
+    const sfWp = waypoints[0];
+    const sfPrevWp = waypoints[waypoints.length - 1];
+    const sfDx = sfWp.x - sfPrevWp.x;
+    const sfDz = sfWp.z - sfPrevWp.z;
+    const sfGeo = new THREE.BoxGeometry(trackWidth + 4, 0.2, 1.5);
+    const sfMat = new THREE.MeshBasicMaterial({ color: 0xff2200, transparent: true, opacity: 0.85 });
+    const sfLine = new THREE.Mesh(sfGeo, sfMat);
+    sfLine.position.set(sfWp.x, 0.12, sfWp.z);
+    sfLine.rotation.y = Math.atan2(sfDx, sfDz);
+    group.add(sfLine);
+
+    scene.add(group);
+    activeRaceTrackGroup = group;
+}
+
+/**
+ * Removes the race track mesh from the scene.
+ */
+function destroyRaceTrack() {
+    if (activeRaceTrackGroup) {
+        scene.remove(activeRaceTrackGroup);
+        activeRaceTrackGroup = null;
+    }
+    window.raceTrackWaypoints = null;
+    window.raceCheckpointIndices = null;
 }
 
 /**
@@ -798,6 +943,12 @@ class GameManager {
         }
 
         createSkybox(skyboxFile);
+        // Build race track if in race mode
+        if (currentGameMode === 'race') {
+            createRaceTrack(skyboxFile);
+        } else {
+            destroyRaceTrack();
+        }
         setTimeout(() => {
             addHUDNotification(`Welcome to ${skyboxName}!`);
         }, 1000);
@@ -892,7 +1043,11 @@ class GameManager {
         // Spawn 3 initial powerups (only on host/local)
         if (!this.isMultiplayer || isHost) {
             for (let i = 0; i < 3; i++) {
-                this.spawnRandomPowerup();
+                if (currentGameMode === 'race') {
+                    this.spawnRacePowerup();
+                } else {
+                    this.spawnRandomPowerup();
+                }
             }
         }
     }
@@ -917,6 +1072,34 @@ class GameManager {
 
         const mesh = createPowerupMesh(px, pz);
         activePowerupMeshes.push(mesh);
+    }
+
+    /**
+     * Spawns a powerup at a random position along the race track.
+     */
+    spawnRacePowerup() {
+        const waypoints = window.raceTrackWaypoints;
+        if (!waypoints || waypoints.length < 2) {
+            this.spawnRandomPowerup();
+            return;
+        }
+        const idx = Math.floor(Math.random() * waypoints.length);
+        const wp = waypoints[idx];
+        const jitter = (Math.random() - 0.5) * 5;
+        const perpIdx = (idx + Math.floor(waypoints.length / 4)) % waypoints.length;
+        const perpWp = waypoints[perpIdx];
+        const perpDx = perpWp.x - wp.x;
+        const perpDz = perpWp.z - wp.z;
+        const perpLen = Math.sqrt(perpDx * perpDx + perpDz * perpDz) || 1;
+        const px = wp.x + (-perpDz / perpLen) * jitter;
+        const pz = wp.z + (perpDx / perpLen) * jitter;
+
+        const pState = {
+            id: 'p_' + Math.random().toString(36).substr(2, 9),
+            x: px, z: pz, active: true
+        };
+        this.powerups.push(pState);
+        activePowerupMeshes.push(createPowerupMesh(px, pz));
     }
 
     /**
@@ -1031,16 +1214,45 @@ class GameManager {
             // Spawn powerups over time (limit max 5 at once)
             this.powerupTimer += dt;
             if (this.powerupTimer > 6.0 && this.powerups.length < 5) {
-                this.spawnRandomPowerup();
+                if (currentGameMode === 'race') {
+                    this.spawnRacePowerup();
+                } else {
+                    this.spawnRandomPowerup();
+                }
                 this.powerupTimer = 0;
+            }
+
+            // Race Mode: check checkpoints and laps (single-player)
+            if (currentGameMode === 'race' && window.raceTrackWaypoints) {
+                const lapEvents = checkRaceCheckpoints(
+                    this.cars, window.raceTrackWaypoints, window.raceCheckpointIndices, RACE_TOTAL_LAPS
+                );
+                for (const ev of lapEvents) {
+                    if (ev.isFinish) {
+                        addHUDNotification(`🏁 ${ev.carName} finished the race! (${RACE_TOTAL_LAPS} laps)`);
+                    } else {
+                        addHUDNotification(`🟡 ${ev.carName} - Lap ${ev.lap}/${RACE_TOTAL_LAPS} complete!`);
+                    }
+                }
             }
 
             // (DGS broadcasts game updates — no client-side broadcast needed)
 
             // Match Win Condition Evaluation
             const survivors = this.cars.filter(c => c.alive);
-            
-            if (currentGameMode === 'team') {
+
+            if (currentGameMode === 'race') {
+                // Race mode: first car to RACE_TOTAL_LAPS wins
+                const finisher = this.cars.find(c => c.raceFinished);
+                if (finisher && this.gameTime > 1.0) {
+                    this.isMatchOver = true;
+                    const ranking = [...this.cars].sort((a, b) => {
+                        if (b.lap !== a.lap) return b.lap - a.lap;
+                        return b.nextCheckpoint - a.nextCheckpoint;
+                    });
+                    displayGameOver(`🏁 ${finisher.name}`, ranking);
+                }
+            } else if (currentGameMode === 'team') {
                 // Team Battle: check if all alive players are on the same team
                 if (survivors.length >= 1 && this.gameTime > 2.0) {
                     const aliveTeams = new Set(survivors.map(c => c.team || 'blue'));
@@ -1055,12 +1267,7 @@ class GameManager {
                             return b.y - a.y;
                         });
 
-                        if (this.isMultiplayer) {
-                            hostSendGameOver(winnerName, ranking.map(r => ({ name: r.name, force: r.impactForce, alive: r.alive, team: r.team })));
-                            displayGameOver(winnerName, ranking);
-                        } else {
-                            displayGameOver(winnerName, ranking);
-                        }
+                        displayGameOver(winnerName, ranking);
                     }
                 }
             } else {
@@ -1075,12 +1282,7 @@ class GameManager {
                         return b.y - a.y;
                     });
 
-                    if (this.isMultiplayer) {
-                        hostSendGameOver(winnerName, ranking.map(r => ({ name: r.name, force: r.impactForce, alive: r.alive })));
-                        displayGameOver(winnerName, ranking);
-                    } else {
-                        displayGameOver(winnerName, ranking);
-                    }
+                    displayGameOver(winnerName, ranking);
                 }
             }
         } else {
@@ -1405,6 +1607,29 @@ class GameManager {
             document.getElementById('hud-player-force').innerText = Math.round(selfCar.impactForce * 100) + '%';
         }
 
+        // Race Mode HUD
+        const raceStatsEl = document.getElementById('hud-race-stats');
+        if (raceStatsEl) {
+            if (currentGameMode === 'race') {
+                raceStatsEl.style.display = 'flex';
+                if (selfCar) {
+                    const lapEl = document.getElementById('hud-race-lap');
+                    const posEl = document.getElementById('hud-race-pos');
+                    if (lapEl) lapEl.innerText = `${selfCar.lap}/${RACE_TOTAL_LAPS}`;
+
+                    // Compute position: rank among all cars by laps (desc) then nextCheckpoint (desc)
+                    const sorted = [...this.cars].sort((a, b) => {
+                        if (b.lap !== a.lap) return b.lap - a.lap;
+                        return b.nextCheckpoint - a.nextCheckpoint;
+                    });
+                    const pos = sorted.findIndex(c => c.id === clientId) + 1;
+                    if (posEl) posEl.innerText = `${pos}/${this.cars.length}`;
+                }
+            } else {
+                raceStatsEl.style.display = 'none';
+            }
+        }
+
         const listContainer = document.getElementById('hud-players-list');
         listContainer.innerHTML = '';
 
@@ -1481,6 +1706,10 @@ class GameManager {
                 // Apply authoritative properties
                 car.alive = serverCar.alive;
                 car.impactForce = serverCar.impactForce;
+                // Sync race state from server
+                if (serverCar.lap !== undefined)            car.lap = serverCar.lap;
+                if (serverCar.nextCheckpoint !== undefined) car.nextCheckpoint = serverCar.nextCheckpoint;
+                if (serverCar.raceFinished !== undefined)   car.raceFinished = serverCar.raceFinished;
                 
                 // Snap to starting state from server for reconciliation
                 car.x = serverCar.x;
@@ -1861,17 +2090,29 @@ document.getElementById('btn-type-private').addEventListener('click', () => {
     document.getElementById('btn-type-public').classList.remove('active');
 });
 
-// Game Mode toggle: FFA vs Team Battle
+// Game Mode toggle: FFA vs Team Battle vs Race
 document.getElementById('btn-mode-ffa').addEventListener('click', () => {
     document.getElementById('btn-mode-ffa').classList.add('active');
     document.getElementById('btn-mode-team').classList.remove('active');
+    document.getElementById('btn-mode-race').classList.remove('active');
     currentGameMode = 'ffa';
 });
 
 document.getElementById('btn-mode-team').addEventListener('click', () => {
     document.getElementById('btn-mode-team').classList.add('active');
     document.getElementById('btn-mode-ffa').classList.remove('active');
+    document.getElementById('btn-mode-race').classList.remove('active');
     currentGameMode = 'team';
+});
+
+document.getElementById('btn-mode-race').addEventListener('click', () => {
+    document.getElementById('btn-mode-race').classList.add('active');
+    document.getElementById('btn-mode-ffa').classList.remove('active');
+    document.getElementById('btn-mode-team').classList.remove('active');
+    currentGameMode = 'race';
+    // Race mode doesn't use teams; hide team picker
+    const teamPicker = document.getElementById('host-lobby-team-picker');
+    if (teamPicker) teamPicker.classList.add('hidden');
 });
 
 document.getElementById('btn-start-host-game').addEventListener('click', () => {
@@ -2224,7 +2465,8 @@ networkCallbacks.onLobbyUpdate = (players, meta) => {
         const teamPicker = document.getElementById('waiting-team-picker');
         if (modeInfoEl && gameModeEl) {
             modeInfoEl.classList.remove('hidden');
-            gameModeEl.innerText = currentGameMode === 'team' ? 'Team Battle' : 'Free For All';
+            const modeLabel = currentGameMode === 'team' ? 'Team Battle' : (currentGameMode === 'race' ? '🏎 Race' : 'Free For All');
+            gameModeEl.innerText = modeLabel;
         }
         if (teamPicker) {
             if (currentGameMode === 'team') {
@@ -2273,6 +2515,11 @@ networkCallbacks.onLobbyUpdate = (players, meta) => {
 networkCallbacks.onStartGame = (data) => {
     window.gameStarted = true;
 
+    // Apply game mode from server (so race track is built before GameManager.initEntities runs)
+    if (data.gameMode) {
+        currentGameMode = data.gameMode;
+    }
+
     // Update local player brand from the server-confirmed list
     const me = data.players.find(p => p.id === clientId);
     if (me) {
@@ -2308,6 +2555,15 @@ networkCallbacks.onGameUpdate = (serverState) => {
 // Hit notify
 networkCallbacks.onHitNotify = (data) => {
     addHUDNotification(`${data.shooterName} hit ${data.targetName}! Knockback: ${data.force}%`);
+};
+
+// Race Lap Update notify
+networkCallbacks.onRaceLapUpdate = (data) => {
+    if (data.isFinish) {
+        addHUDNotification(`🏁 ${data.carName} finished the race! (${RACE_TOTAL_LAPS} laps)`);
+    } else {
+        addHUDNotification(`🟡 ${data.carName} - Lap ${data.lap}/${RACE_TOTAL_LAPS} complete!`);
+    }
 };
 
 // Elimination notify

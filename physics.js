@@ -46,7 +46,12 @@ function createCarPhysicsState(id, name, brand, x = 0, z = 0) {
         alive: true,
         outOfBounds: false,
         isFalling: false,
-        shootCooldown: 0
+        shootCooldown: 0,
+
+        // Race Mode state
+        lap: 0,              // Completed laps
+        nextCheckpoint: 0,  // Index of next required checkpoint gate
+        raceFinished: false // True once 3 laps completed
     };
 }
 
@@ -347,4 +352,63 @@ function checkPowerupCollections(powerups, cars) {
     }
 
     return collectedIndexes;
+}
+
+/**
+ * Checks race checkpoint crossings and lap completions.
+ * waypoints: array of {x,z} track points; checkpointIndices: which waypoint indices are gates.
+ * Returns array of {carId, lap, isFinish} events.
+ */
+function checkRaceCheckpoints(cars, waypoints, checkpointIndices, totalLaps) {
+    if (!waypoints || waypoints.length < 2) return [];
+    const events = [];
+    const numCheckpoints = checkpointIndices.length;
+
+    for (const car of cars) {
+        if (!car.alive || car.raceFinished) continue;
+
+        const cpIdx = checkpointIndices[car.nextCheckpoint % numCheckpoints];
+        const nextCpIdx = checkpointIndices[(car.nextCheckpoint + 1) % numCheckpoints];
+
+        // Gate defined between waypoints[cpIdx] and waypoints[nextCpIdx]
+        // We check if car has passed the gate at waypoints[cpIdx]
+        const gateWp = waypoints[cpIdx];
+        const prevWp = cpIdx > 0 ? waypoints[cpIdx - 1] : waypoints[waypoints.length - 1];
+
+        // Gate normal: perpendicular to track direction at this waypoint
+        const trackDx = gateWp.x - prevWp.x;
+        const trackDz = gateWp.z - prevWp.z;
+        const trackLen = Math.sqrt(trackDx * trackDx + trackDz * trackDz) || 1;
+        const gateNormX = -trackDz / trackLen; // perpendicular
+        const gateNormZ =  trackDx / trackLen;
+
+        // Vector from gate center to car
+        const toCar = {
+            x: car.x - gateWp.x,
+            z: car.z - gateWp.z
+        };
+
+        // Distance from gate centre to car (along track normal direction)
+        const dot = toCar.x * trackDx / trackLen + toCar.z * trackDz / trackLen;
+        const lateral = Math.abs(toCar.x * gateNormX + toCar.z * gateNormZ);
+
+        // Must be near gate (within 8 units along track direction, 20 units wide)
+        if (Math.abs(dot) < 8 && lateral < 20) {
+            // Car has entered gate zone — check if moving in the forward direction
+            const velAlongTrack = car.vx * trackDx / trackLen + car.vz * trackDz / trackLen;
+            if (velAlongTrack > 0) {
+                car.nextCheckpoint++;
+
+                // Completed all checkpoints → count a lap
+                if (car.nextCheckpoint >= numCheckpoints) {
+                    car.nextCheckpoint = 0;
+                    car.lap++;
+                    const isFinish = car.lap >= (totalLaps || 3);
+                    if (isFinish) car.raceFinished = true;
+                    events.push({ carId: car.id, carName: car.name, lap: car.lap, isFinish });
+                }
+            }
+        }
+    }
+    return events;
 }

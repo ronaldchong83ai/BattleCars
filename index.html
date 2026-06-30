@@ -134,6 +134,7 @@
                 <div class="room-type-toggle">
                     <button id="btn-mode-ffa" class="btn-toggle active">Free For All</button>
                     <button id="btn-mode-team" class="btn-toggle">Team Battle</button>
+                    <button id="btn-mode-race" class="btn-toggle">🏎 Race</button>
                 </div>
             </div>
             <div class="button-group">
@@ -329,11 +330,21 @@
                 <span>[W][A][S][D] Drive</span> | <span>[Left Click] Shoot</span>
             </div>
 
-            <!-- Bottom Right: Impact Force Panel -->
+            <!-- Bottom Right: Impact Force + Race Stats Panel -->
             <div class="hud-panel player-status-panel">
                 <div class="stat-box">
                     <span class="stat-label">IMPACT FORCE</span>
                     <span id="hud-player-force" class="stat-value text-glow">100%</span>
+                </div>
+                <div id="hud-race-stats" class="race-stats-box" style="display:none;">
+                    <div class="stat-box">
+                        <span class="stat-label">ROUND</span>
+                        <span id="hud-race-lap" class="stat-value text-glow race-lap">0/3</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">POSITION</span>
+                        <span id="hud-race-pos" class="stat-value text-glow race-pos">-/-</span>
+                    </div>
                 </div>
             </div>
 
@@ -379,9 +390,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
     <!-- Game Source Scripts -->
-    <script src="physics.js?v=2.1.6"></script>
-    <script src="network.js?v=2.1.6"></script>
-    <script src="ai.js?v=2.1.6"></script>
-    <script src="game.js?v=2.1.6"></script>
+    <script src="physics.js?v=2.2.0"></script>
+    <script src="network.js?v=2.2.0"></script>
+    <script src="ai.js?v=2.2.0"></script>
+    <script src="game.js?v=2.2.0"></script>
 </body>
 </html>

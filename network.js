@@ -139,7 +139,7 @@ function initNetwork() {
             // Game simulation events — handled by all clients (host AND guest) identically
             const simulationEvents = [
                 'START_GAME', 'GAME_UPDATE', 'HIT_NOTIFY',
-                'ELIMINATED_NOTIFY', 'GAME_OVER'
+                'ELIMINATED_NOTIFY', 'GAME_OVER', 'RACE_LAP_UPDATE'
             ];
 
             if (simulationEvents.includes(innerType)) {
@@ -310,7 +310,7 @@ function broadcastLobbyState() {
 
 function hostStartGame(playersArray, skyboxName) {
     // Sends START_GAME to DGS which will start the simulation and relay to all clients
-    sendRoomMessage('START_GAME', { players: playersArray, skybox: skyboxName });
+    sendRoomMessage('START_GAME', { players: playersArray, skybox: skyboxName, gameMode: window.currentGameMode || 'ffa' });
 }
 
 // hostSendGameUpdate, hostSendHitNotification, etc. are now handled server-side.
@@ -462,6 +462,12 @@ function handleClientMessage(event) {
         }
     }
     
+    else if (type === 'RACE_LAP_UPDATE') {
+        if (networkCallbacks.onRaceLapUpdate) {
+            networkCallbacks.onRaceLapUpdate(data);
+        }
+    }
+
     else if (type === 'ROOM_CLOSED') {
         alert("The host closed the game room.");
         leaveRoom();

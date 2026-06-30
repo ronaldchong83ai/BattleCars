@@ -83,7 +83,46 @@ function updateAIBot(bot, allCars, powerups, dt) {
         }
     }
 
-    // 4. Decision Node: Target powerup or opponent
+    // 4. Race Mode: Steer toward next checkpoint waypoint
+    if (window.currentGameMode === 'race' && window.raceTrackWaypoints && window.raceCheckpointIndices) {
+        const waypoints = window.raceTrackWaypoints;
+        const cpIndices = window.raceCheckpointIndices;
+        const numCp = cpIndices.length;
+        const nextCpWpIdx = cpIndices[bot.nextCheckpoint % numCp];
+        const targetWp = waypoints[nextCpWpIdx];
+
+        if (targetWp) {
+            const dx = targetWp.x - bot.x;
+            const dz = targetWp.z - bot.z;
+            const angleToWp = Math.atan2(-dx, -dz);
+            targetYaw = angleToWp;
+            steerTowardAngle(bot, angleToWp);
+
+            const angleDiff = getAngleDifference(bot.yaw, angleToWp);
+            bot.inputThrottle = Math.abs(angleDiff) < Math.PI / 3 ? 1.0 : 0.8;
+
+            // Still shoot at nearby opponents while racing
+            if (nearestOpponent && minDistOpponent < 30) {
+                const angleToOpp = Math.atan2(-(nearestOpponent.x - bot.x), -(nearestOpponent.z - bot.z));
+                const oppAngleDiff = getAngleDifference(bot.yaw, angleToOpp);
+                if (Math.abs(oppAngleDiff) < 0.35) {
+                    triggerShoot = true;
+                    targetYaw = angleToOpp;
+                }
+            }
+
+            // Shoot execution
+            if (triggerShoot && bot.shootCooldown <= 0) {
+                bot.wantsToShoot = true;
+                bot.aimYaw = targetYaw;
+            } else {
+                bot.wantsToShoot = false;
+            }
+            return;
+        }
+    }
+
+    // 4. Decision Node: Target powerup or opponent (non-race modes)
     // Bots will prioritize powerups if they are very close or if they aren't fully charged
     let currentTarget = null;
     let targetType = 'opponent'; // 'opponent' or 'powerup'

@@ -69,7 +69,26 @@ function sendTo(ws, msgObj) {
     }
 }
 
-function spawnPowerup() {
+function spawnPowerup(waypoints) {
+    // In race mode, spawn power-ups along the track path
+    if (waypoints && waypoints.length > 1) {
+        const idx = Math.floor(Math.random() * waypoints.length);
+        const wp = waypoints[idx];
+        // Offset slightly so it doesn't sit exactly on the centreline
+        const jitter = (Math.random() - 0.5) * 6;
+        const perpIdx = (idx + Math.floor(waypoints.length / 4)) % waypoints.length;
+        const perpWp = waypoints[perpIdx];
+        const perpDx = perpWp.x - wp.x;
+        const perpDz = perpWp.z - wp.z;
+        const perpLen = Math.sqrt(perpDx * perpDx + perpDz * perpDz) || 1;
+        return {
+            id:     'p_' + Math.random().toString(36).substr(2, 9),
+            x:      wp.x + (-perpDz / perpLen) * jitter,
+            z:      wp.z + (perpDx / perpLen) * jitter,
+            active: true
+        };
+    }
+    // Default: random spawn anywhere
     const angle  = Math.random() * Math.PI * 2;
     const radius = Math.random() * (ARENA_RADIUS * 0.7);
     return {
@@ -79,6 +98,55 @@ function spawnPowerup() {
         active: true
     };
 }
+
+// Race track waypoints per skyline (must match client-side RACE_TRACK_DEFINITIONS)
+const RACE_TRACK_DEFINITIONS = {
+    'singapore_skyline.png': [
+        {x:50,z:0},{x:45,z:20},{x:30,z:38},{x:10,z:48},{x:-10,z:48},
+        {x:-30,z:38},{x:-45,z:20},{x:-50,z:0},{x:-45,z:-20},{x:-30,z:-38},
+        {x:-10,z:-48},{x:10,z:-48},{x:30,z:-38},{x:45,z:-20}
+    ],
+    'tokyo_skyline.png': [
+        {x:55,z:5},{x:40,z:25},{x:15,z:35},{x:-10,z:30},{x:-30,z:15},
+        {x:-40,z:-5},{x:-30,z:-25},{x:-10,z:-38},{x:15,z:-42},{x:40,z:-30},{x:55,z:-10}
+    ],
+    'paris_skyline.png': [
+        {x:0,z:-52},{x:30,z:-35},{x:48,z:0},{x:30,z:35},{x:0,z:52},
+        {x:-30,z:35},{x:-48,z:0},{x:-30,z:-35}
+    ],
+    'new_york_skyline.png': [
+        {x:50,z:-35},{x:50,z:35},{x:-50,z:35},{x:-50,z:-35}
+    ],
+    'london_skyline.png': [
+        {x:30,z:-50},{x:50,z:-20},{x:45,z:20},{x:20,z:45},{x:-15,z:50},
+        {x:-45,z:30},{x:-52,z:-5},{x:-35,z:-40},{x:0,z:-55}
+    ],
+    'sydney_skyline.png': [
+        {x:55,z:0},{x:40,z:30},{x:10,z:50},{x:-20,z:45},{x:-45,z:20},
+        {x:-50,z:-15},{x:-30,z:-42},{x:10,z:-52},{x:40,z:-35}
+    ],
+    'cairo_skyline.png': [
+        {x:0,z:-52},{x:42,z:-30},{x:52,z:0},{x:42,z:30},{x:0,z:52},
+        {x:-42,z:30},{x:-52,z:0},{x:-42,z:-30}
+    ],
+    'rio_skyline.png': [
+        {x:35,z:-45},{x:55,z:-15},{x:55,z:15},{x:35,z:45},{x:0,z:50},
+        {x:-35,z:45},{x:-55,z:15},{x:-55,z:-15},{x:-35,z:-45},{x:0,z:-50}
+    ]
+};
+
+const RACE_CHECKPOINT_INDICES = {
+    'singapore_skyline.png':  [0, 3, 7, 10],
+    'tokyo_skyline.png':      [0, 3, 6, 9],
+    'paris_skyline.png':      [0, 2, 4, 6],
+    'new_york_skyline.png':   [0, 1, 2, 3],
+    'london_skyline.png':     [0, 2, 4, 7],
+    'sydney_skyline.png':     [0, 2, 4, 7],
+    'cairo_skyline.png':      [0, 2, 4, 6],
+    'rio_skyline.png':        [0, 2, 5, 8]
+};
+
+const RACE_TOTAL_LAPS = 3;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Game room simulation lifecycle
@@ -105,9 +173,17 @@ function startGameRoom(room, players, skybox, gameMode) {
     room.broadcastTimer = 0;
     room.skybox       = skybox;
 
+    // Set up race track if in race mode
+    room.raceWaypoints = null;
+    room.raceCheckpointIndices = null;
+    if (room.gameMode === 'race') {
+        room.raceWaypoints = RACE_TRACK_DEFINITIONS[skybox] || RACE_TRACK_DEFINITIONS['singapore_skyline.png'];
+        room.raceCheckpointIndices = RACE_CHECKPOINT_INDICES[skybox] || RACE_CHECKPOINT_INDICES['singapore_skyline.png'];
+    }
+
     // Spawn initial powerups
     for (let i = 0; i < 3; i++) {
-        room.powerups.push(spawnPowerup());
+        room.powerups.push(spawnPowerup(room.raceWaypoints));
     }
 
     // Create authoritative car states from player list
@@ -295,8 +371,44 @@ function startGameRoom(room, players, skybox, gameMode) {
         // ── Powerup spawn ────────────────────────────────────────────────
         room.powerupTimer += dt;
         if (room.powerupTimer >= POWERUP_SPAWN_SEC && room.powerups.length < MAX_POWERUPS) {
-            room.powerups.push(spawnPowerup());
+            room.powerups.push(spawnPowerup(room.raceWaypoints));
             room.powerupTimer = 0;
+        }
+
+        // ── Race Mode: checkpoint and lap tracking ──────────────────────────────
+        if (room.gameMode === 'race' && room.raceWaypoints) {
+            const lapEvents = checkRaceCheckpoints(
+                room.cars, room.raceWaypoints, room.raceCheckpointIndices, RACE_TOTAL_LAPS
+            );
+            for (const ev of lapEvents) {
+                broadcastRelay(room, 'RACE_LAP_UPDATE', {
+                    carId: ev.carId,
+                    carName: ev.carName,
+                    lap: ev.lap,
+                    isFinish: ev.isFinish
+                });
+                if (ev.isFinish) {
+                    // This car finished all laps — trigger game over
+                    room.matchOver = true;
+                    const ranking = [...room.cars].sort((a, b) => {
+                        // Sort by laps desc, then by nextCheckpoint desc (progress)
+                        if (b.lap !== a.lap) return b.lap - a.lap;
+                        return b.nextCheckpoint - a.nextCheckpoint;
+                    });
+                    broadcastRelay(room, 'GAME_OVER', {
+                        winnerName: ev.carName,
+                        leaderboard: ranking.map(r => ({
+                            name:  r.name,
+                            force: r.impactForce,
+                            alive: r.alive,
+                            lap:   r.lap
+                        }))
+                    });
+                    clearInterval(room.physicsInterval);
+                    room.physicsInterval = null;
+                    return;
+                }
+            }
         }
 
         // ── Win condition ────────────────────────────────────────────────
@@ -363,6 +475,9 @@ function startGameRoom(room, players, skybox, gameMode) {
                     inputSteer:  c.inputSteer,
                     impactForce: c.impactForce,
                     team:        c.team,
+                    lap:         c.lap || 0,
+                    nextCheckpoint: c.nextCheckpoint || 0,
+                    raceFinished:   c.raceFinished || false,
                     lastProcessedSeq: c._lastProcessedSeq || 0
                 })),
                 bullets: room.bullets.map(b => ({
