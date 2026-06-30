@@ -1,4 +1,4 @@
-const CACHE_NAME = 'battlecars-v2.2.3';
+const CACHE_NAME = 'battlecars-v2.2.4';
 const ASSETS = [
   './',
   './index.html',

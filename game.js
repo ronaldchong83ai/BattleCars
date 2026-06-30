@@ -28,6 +28,28 @@ if (isMobileDevice) {
     } else {
         checkOrientation();
     }
+// Prevent zoom on touch events for mobile browsers (disables double-tap and pinch-to-zoom)
+if (isMobileDevice) {
+    document.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 1) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    document.addEventListener('touchmove', (e) => {
+        if (e.scale !== undefined && e.scale !== 1) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', (e) => {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+            e.preventDefault();
+        }
+        lastTouchEnd = now;
+    }, false);
 }
 
 // Game Settings
@@ -1584,6 +1606,7 @@ class GameManager {
         // Update Spectating HUD Status and Spectator Exit Button
         const exitBtn = document.getElementById('btn-spectator-exit');
         if (exitBtn) {
+            exitBtn.innerText = "Quit Battle"; // Ensure it is always "Quit Battle" (bypasses old cached HTML)
             if (isSpectating && !this.isMatchOver) {
                 exitBtn.classList.remove('hidden');
             } else {
@@ -1671,7 +1694,10 @@ class GameManager {
             }
 
             item.innerHTML = `
-                <span class="hud-player-name">${teamDot}${car.name}</span>
+                <div style="display: flex; align-items: center; gap: 8px; overflow: hidden; max-width: 170px;">
+                    ${teamDot}
+                    <span class="hud-player-name" style="max-width: 100%; margin: 0; padding: 0;">${car.name}</span>
+                </div>
                 <div class="hud-player-info">
                     <span class="hud-player-force-val">${statusText} [${forceText}]</span>
                 </div>
@@ -2646,7 +2672,10 @@ function displayGameOver(winnerName, ranking) {
         
         leaderboardEl.innerHTML += `
             <li>
-                <span>#${i + 1} ${teamDot}${entry.name}</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    ${teamDot}
+                    <span>#${i + 1} ${entry.name}</span>
+                </div>
                 <span>${statusText} (${Math.round(dispForce * 100)}% Force)</span>
             </li>
         `;
