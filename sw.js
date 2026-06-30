@@ -1,4 +1,4 @@
-const CACHE_NAME = 'battlecars-v2.2.4';
+const CACHE_NAME = 'battlecars-v2.2.5';
 const ASSETS = [
   './',
   './index.html',
@@ -36,8 +36,19 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
-      return cachedResponse || fetch(e.request);
-    })
+    fetch(e.request)
+      .then((response) => {
+        // Cache successful GET requests
+        if (e.request.method === 'GET' && response && response.status === 200) {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(e.request, responseToCache);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        return caches.match(e.request);
+      })
   );
 });
