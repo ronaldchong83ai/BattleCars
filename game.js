@@ -236,9 +236,27 @@ function createArenaGeometry() {
     ringMesh.position.y = 0.05; // slightly above floor
     arenaGroup.add(ringMesh);
 
-    // Outer grid guidelines on floor
+    // Outer grid guidelines on floor (clipped to circular boundary)
     const gridHelper = new THREE.GridHelper(ARENA_RADIUS * 2, 28, 0xb128ff, 0x1f1a30);
     gridHelper.position.y = 0.02;
+    gridHelper.material.onBeforeCompile = (shader) => {
+        shader.vertexShader = shader.vertexShader.replace(
+            '#include <common>',
+            `#include <common>\nvarying vec3 vWorldPosition;`
+        );
+        shader.vertexShader = shader.vertexShader.replace(
+            '#include <begin_vertex>',
+            `#include <begin_vertex>\nvWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;`
+        );
+        shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <common>',
+            `#include <common>\nvarying vec3 vWorldPosition;`
+        );
+        shader.fragmentShader = shader.fragmentShader.replace(
+            'void main() {',
+            `void main() {\nif (length(vWorldPosition.xz) > 70.0) { discard; }`
+        );
+    };
     arenaGroup.add(gridHelper);
 
     scene.add(arenaGroup);
