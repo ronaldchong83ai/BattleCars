@@ -1,4 +1,4 @@
-const CACHE_NAME = 'battlecars-v2';
+const CACHE_NAME = 'battlecars-v2.2.1';
 const ASSETS = [
   './',
   './index.html',
@@ -8,7 +8,7 @@ const ASSETS = [
   './ai.js',
   './game.js',
   './icon-512.png',
-  './singapore_skyline.png'
+  './Skylines/singapore_skyline.png'
 ];
 
 self.addEventListener('install', (e) => {

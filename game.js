@@ -364,9 +364,10 @@ function destroyRaceTrack() {
 function createSkybox(chosenFile) {
     const skyGeo = new THREE.SphereGeometry(320, 64, 48);
     
-    // Load texture
+    // Load texture from Skylines/ folder
     const textureLoader = new THREE.TextureLoader();
-    textureLoader.load(chosenFile, (texture) => {
+    const filePath = chosenFile.startsWith('Skylines/') ? chosenFile : 'Skylines/' + chosenFile;
+    textureLoader.load(filePath, (texture) => {
         texture.wrapS = THREE.RepeatWrapping;
         texture.repeat.x = -1; // Invert to face inward correctly
         
@@ -1645,8 +1646,14 @@ class GameManager {
             const statusText = car.alive ? 'ALIVE' : 'OUT';
             const forceText = Math.round(car.impactForce * 100) + '%';
 
+            let teamDot = '';
+            if (currentGameMode === 'team' && car.team) {
+                const dotColor = car.team === 'red' ? 'var(--neon-red)' : 'var(--neon-cyan)';
+                teamDot = `<span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${dotColor}; margin-right: 8px; box-shadow: 0 0 8px ${dotColor}; vertical-align: middle;"></span>`;
+            }
+
             item.innerHTML = `
-                <span class="hud-player-name">${car.name}</span>
+                <span class="hud-player-name">${teamDot}${car.name}</span>
                 <div class="hud-player-info">
                     <span class="hud-player-force-val">${statusText} [${forceText}]</span>
                 </div>
@@ -2602,10 +2609,16 @@ function displayGameOver(winnerName, ranking) {
         
         const forceVal = entry.force !== undefined ? entry.force : entry.impactForce;
         const dispForce = forceVal !== undefined ? forceVal : 1.0;
+
+        let teamDot = '';
+        if (currentGameMode === 'team' && entry.team) {
+            const dotColor = entry.team === 'red' ? 'var(--neon-red)' : 'var(--neon-cyan)';
+            teamDot = `<span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${dotColor}; margin-right: 8px; box-shadow: 0 0 8px ${dotColor}; vertical-align: middle;"></span>`;
+        }
         
         leaderboardEl.innerHTML += `
             <li>
-                <span>#${i + 1} ${entry.name}</span>
+                <span>#${i + 1} ${teamDot}${entry.name}</span>
                 <span>${statusText} (${Math.round(dispForce * 100)}% Force)</span>
             </li>
         `;
