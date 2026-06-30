@@ -1370,6 +1370,19 @@ class GameManager {
             }
         }
 
+        // Hide mobile controls during spectating
+        const joystickEl = document.getElementById('mobile-joystick');
+        const shootEl = document.getElementById('mobile-shoot');
+        if (isSpectating) {
+            if (joystickEl) joystickEl.style.setProperty('display', 'none', 'important');
+            if (shootEl) shootEl.style.setProperty('display', 'none', 'important');
+        } else {
+            if (isMobileDevice) {
+                if (joystickEl) joystickEl.style.removeProperty('display');
+                if (shootEl) shootEl.style.removeProperty('display');
+            }
+        }
+
         const controlsHelper = document.querySelector('.controls-helper');
         if (controlsHelper) {
             if (isSpectating) {
