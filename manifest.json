@@ -1,0 +1,19 @@
+{
+  "name": "Battle Cars",
+  "short_name": "Battle Cars",
+  "description": "3D Futuristic Car Shooter Arena Game",
+  "start_url": "/BattleCars/",
+  "scope": "/BattleCars/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#050508",
+  "theme_color": "#0d0d14",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

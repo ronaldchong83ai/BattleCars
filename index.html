@@ -9,7 +9,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=2.1.1">
-    <link rel="icon" href="data:,">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Battle Cars">
+    <link rel="apple-touch-icon" href="icon-512.png">
+    <link rel="icon" href="icon-512.png">
 </head>
 <body>
     <!-- Rotation Warning Overlay for Portrait Mobile -->
@@ -36,6 +41,44 @@
 
     <!-- UI Overlay Layer -->
     <div id="ui-container">
+        
+        <!-- PWA Installation Force Overlay -->
+        <div id="pwa-install-overlay" class="menu-screen hidden" style="z-index: 9999; background: radial-gradient(circle, #0e0e18 0%, #050508 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px;">
+            <div class="panel" style="max-width: 480px; padding: 35px; border: 2px solid var(--neon-cyan); box-shadow: 0 0 25px rgba(0, 242, 254, 0.25); border-radius: 12px; background: rgba(13, 13, 20, 0.95); backdrop-filter: blur(10px); display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <div style="margin-bottom: 25px;">
+                    <img src="icon-512.png" alt="Battle Cars Logo" style="width: 100px; height: 100px; border-radius: 20px; box-shadow: 0 0 20px var(--neon-cyan); border: 2px solid var(--neon-cyan);">
+                </div>
+                
+                <h1 style="font-family: 'Orbitron', sans-serif; font-size: 28px; font-weight: 900; letter-spacing: 2px; color: #ffffff; text-shadow: 0 0 10px var(--neon-cyan); margin-bottom: 15px;">INSTALL BATTLE CARS</h1>
+                
+                <p style="font-family: 'Rajdhani', sans-serif; font-size: 17px; color: #b0b0c0; line-height: 1.6; margin-bottom: 30px;">
+                    Battle Cars is a Progressive Web App. Install the application on your device to unlock low-latency rendering, full-screen battle modes, and home screen access.
+                </p>
+
+                <div id="pwa-trigger-chrome" class="hidden" style="width: 100%;">
+                    <button id="btn-pwa-install" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 16px; text-transform: uppercase;">Download Web App</button>
+                </div>
+
+                <div id="pwa-trigger-ios" class="hidden" style="text-align: left; background: rgba(255,255,255,0.05); padding: 18px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.15); width: 100%; box-sizing: border-box;">
+                    <h3 style="font-family: 'Orbitron', sans-serif; font-size: 15px; color: var(--neon-cyan); margin-bottom: 10px; text-transform: uppercase;">Installation Steps:</h3>
+                    <ol style="font-family: 'Rajdhani', sans-serif; font-size: 15px; color: #d0d0e0; margin: 0; padding-left: 20px; line-height: 1.8;">
+                        <li>Tap the <strong>Share</strong> icon <span style="font-size: 18px;">⎋</span> at the bottom of Safari.</li>
+                        <li>Scroll down and select <strong>Add to Home Screen</strong> <span style="font-size: 18px;">⊞</span>.</li>
+                        <li>Confirm by tapping <strong>Add</strong> at the top right.</li>
+                    </ol>
+                </div>
+
+                <div id="pwa-trigger-other" class="hidden" style="text-align: left; background: rgba(255,255,255,0.05); padding: 18px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.15); width: 100%; box-sizing: border-box;">
+                    <p style="font-family: 'Rajdhani', sans-serif; font-size: 15px; color: #d0d0e0; margin: 0; line-height: 1.6;">
+                        Tap the <strong>menu icon</strong> (three dots/lines) in your browser address bar, then select <strong>Install App</strong> or <strong>Add to Home Screen</strong>.
+                    </p>
+                </div>
+                
+                <p id="pwa-bypass-link" style="margin-top: 25px; font-size: 12px; color: #505060; cursor: pointer; text-decoration: underline;">
+                    Launch in Browser (Temporary)
+                </p>
+            </div>
+        </div>
         
         <!-- MAIN MENU -->
         <div id="main-menu" class="menu-screen active">

@@ -2482,3 +2482,134 @@ function initFullscreenButton() {
         });
     });
 }
+
+// -------------------------------------------------------------
+// PWA INSTALLATION FORCE FLOW
+// -------------------------------------------------------------
+let deferredPrompt = null;
+
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('PWA Service Worker registered:', reg.scope))
+            .catch(err => console.error('PWA Service Worker registration failed:', err));
+    });
+}
+
+// Check Standalone Mode
+function checkPwaInstallState() {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    
+    // Check if bypass has been set in session storage (for development/temporary browser playing)
+    const isBypassed = sessionStorage.getItem('pwa-install-bypassed') === 'true';
+
+    if (isStandalone || isBypassed) {
+        // App is installed or bypassed -> let player access main menu
+        const pwaOverlay = document.getElementById('pwa-install-overlay');
+        if (pwaOverlay) pwaOverlay.classList.add('hidden');
+        const mainMenu = document.getElementById('main-menu');
+        if (mainMenu) mainMenu.classList.add('active');
+    } else {
+        // App NOT installed -> force install screen and hide main menu
+        const pwaOverlay = document.getElementById('pwa-install-overlay');
+        if (pwaOverlay) {
+            pwaOverlay.classList.remove('hidden');
+            pwaOverlay.style.display = 'flex';
+        }
+        const mainMenu = document.getElementById('main-menu');
+        if (mainMenu) mainMenu.classList.remove('active');
+
+        // Detect Platform & Browser to show custom install instructions
+        detectPwaPlatform();
+    }
+}
+
+function detectPwaPlatform() {
+    const ua = navigator.userAgent.toLowerCase();
+    const isIos = /iphone|ipad|ipod/.test(ua);
+    
+    const chromeTrigger = document.getElementById('pwa-trigger-chrome');
+    const iosTrigger = document.getElementById('pwa-trigger-ios');
+    const otherTrigger = document.getElementById('pwa-trigger-other');
+
+    if (chromeTrigger) chromeTrigger.classList.add('hidden');
+    if (iosTrigger) iosTrigger.classList.add('hidden');
+    if (otherTrigger) otherTrigger.classList.add('hidden');
+
+    if (isIos) {
+        // iOS Safari Instructions
+        if (iosTrigger) iosTrigger.classList.remove('hidden');
+    } else if (deferredPrompt) {
+        // Chrome / Chromium with prompt available
+        if (chromeTrigger) chromeTrigger.classList.remove('hidden');
+    } else {
+        // Other / Desktop instruction fallback
+        if (otherTrigger) otherTrigger.classList.remove('hidden');
+    }
+}
+
+// Listen to beforeinstallprompt
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent default browser install banner
+    e.preventDefault();
+    // Stash the event
+    deferredPrompt = e;
+    
+    // Update platform trigger display to show install button
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    const isBypassed = sessionStorage.getItem('pwa-install-bypassed') === 'true';
+    if (!isStandalone && !isBypassed) {
+        const chromeTrigger = document.getElementById('pwa-trigger-chrome');
+        const otherTrigger = document.getElementById('pwa-trigger-other');
+        if (chromeTrigger) chromeTrigger.classList.remove('hidden');
+        if (otherTrigger) otherTrigger.classList.add('hidden');
+    }
+});
+
+// Install Button click trigger
+document.addEventListener('DOMContentLoaded', () => {
+    const installBtn = document.getElementById('btn-pwa-install');
+    if (installBtn) {
+        installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            
+            // Show prompt
+            deferredPrompt.prompt();
+            // Wait for user choice
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                console.log('User accepted the PWA install prompt');
+                deferredPrompt = null;
+                // Hide overlay
+                const pwaOverlay = document.getElementById('pwa-install-overlay');
+                if (pwaOverlay) pwaOverlay.classList.add('hidden');
+                const mainMenu = document.getElementById('main-menu');
+                if (mainMenu) mainMenu.classList.add('active');
+            }
+        });
+    }
+
+    // Bypass Link Handler (temporary launch in browser)
+    const bypassLink = document.getElementById('pwa-bypass-link');
+    if (bypassLink) {
+        bypassLink.addEventListener('click', () => {
+            sessionStorage.setItem('pwa-install-bypassed', 'true');
+            checkPwaInstallState();
+        });
+    }
+
+    // Initial check
+    checkPwaInstallState();
+});
+
+// Also trigger on appinstalled event
+window.addEventListener('appinstalled', () => {
+    console.log('Battle Cars has been installed successfully');
+    deferredPrompt = null;
+    const pwaOverlay = document.getElementById('pwa-install-overlay');
+    if (pwaOverlay) pwaOverlay.classList.add('hidden');
+    const mainMenu = document.getElementById('main-menu');
+    if (mainMenu) mainMenu.classList.add('active');
+});
+
